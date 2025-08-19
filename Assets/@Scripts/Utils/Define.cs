@@ -28,7 +28,13 @@ public class Define
 
     public enum EObjectType
     {
-
+        Blue,
+        Green,
+        Orange,
+        Purple,
+        Red,
+        Yellow,
+        None,
 
     }
 

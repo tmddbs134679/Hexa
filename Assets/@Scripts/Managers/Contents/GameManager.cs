@@ -48,5 +48,12 @@ public class GameManager : MonoBehaviour
     }
 
 
+
     #endregion
+
+    public void Init()
+    {
+
+    }
+
 }
