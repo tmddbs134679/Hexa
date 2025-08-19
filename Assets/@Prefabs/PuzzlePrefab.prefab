@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 408635839953455098}
   - component: {fileID: 1461698277009097582}
+  - component: {fileID: 4269777351009760216}
   m_Layer: 0
   m_Name: PuzzlePrefab
   m_TagString: Untagged
@@ -27,7 +28,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1, z: 0}
-  m_LocalScale: {x: 1.59, y: 1.59, z: 1.59}
+  m_LocalScale: {x: 0.9, y: 0.9, z: 0.9}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 680459598601821099}
@@ -78,6 +79,20 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &4269777351009760216
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 943346105987811270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69af9c552e3891c41a1253227f4f1ec0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  typeId: 0
+  sr: {fileID: 5929552106932227135}
 --- !u!1 &5361888532399407614
 GameObject:
   m_ObjectHideFlags: 0
