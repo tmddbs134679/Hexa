@@ -1008,6 +1008,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &897727025
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 897727027}
+  - component: {fileID: 897727026}
+  m_Layer: 0
+  m_Name: SwapInput
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &897727026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 897727025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f54f71f97bfc6a046b841595b84686bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cam: {fileID: 519420031}
+  board: {fileID: 586130700}
+  matcher: {fileID: 1052694032}
+  loop: {fileID: 2127971509}
+  minDragDistance: 0.5
+--- !u!4 &897727027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 897727025}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1052694031
 GameObject:
   m_ObjectHideFlags: 0
@@ -1503,7 +1552,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   board: {fileID: 586130700}
   filler: {fileID: 1635816583}
-  moveDuration: 0.22
+  moveDurPerCell: 0.04
 --- !u!4 &1503545812
 Transform:
   m_ObjectHideFlags: 0
@@ -1670,11 +1719,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   board: {fileID: 586130700}
-  gravity: {fileID: 0}
-  puzzlePrefab: {fileID: 943346105987811270, guid: dffc5a827359bc84faf496ef9c058c94, type: 3}
-  pieceParent: {fileID: 834629519}
-  spawnCell: {x: 0, y: 0, z: 0}
-  spawnOffsetY: 7
+  piecePrefab: {fileID: 943346105987811270, guid: dffc5a827359bc84faf496ef9c058c94, type: 3}
   typeSprites:
   - {fileID: 21300000, guid: 6a6b8fb9caaa75a42a40ce6e711326ad, type: 3}
   - {fileID: 21300000, guid: 6ff937dbb4003e94db0aaaa9c3448f9c, type: 3}
@@ -1682,7 +1727,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5e25169021283f343bc9743b9d521e62, type: 3}
   - {fileID: 21300000, guid: 318133a33ecb2d84eb75ed8f55ced1d3, type: 3}
   - {fileID: 21300000, guid: e4a9742dc0d27a840835d1212b8591a4, type: 3}
-  typeCount: 6
+  colorCount: 6
 --- !u!4 &1635816584
 Transform:
   m_ObjectHideFlags: 0
@@ -2177,6 +2222,10 @@ MonoBehaviour:
   gravity: {fileID: 1503545811}
   matcher: {fileID: 1052694032}
   initialCount: 30
+  destroyAnimDuration: 0.3
+  destroyScaleMultiplier: 1.5
+  useSequentialDestroy: 0
+  sequentialDelay: 0.05
 --- !u!4 &2127971510
 Transform:
   m_ObjectHideFlags: 0
@@ -2208,3 +2257,4 @@ SceneRoots:
   - {fileID: 2127971510}
   - {fileID: 1635816584}
   - {fileID: 1119116633}
+  - {fileID: 897727027}
