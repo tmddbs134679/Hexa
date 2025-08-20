@@ -13,29 +13,34 @@ public class MatchFinder : MonoBehaviour
     /// 보드 전체에서 라인(>=3) + 군집(>=4) 매치 수집
     public HashSet<Vector3Int> CollectAllMatches()
     {
-        var result = new HashSet<Vector3Int>();
-        var keys = board.pieces.Keys.ToList();      // 스냅샷
-        var visited = new HashSet<Vector3Int>();       // 군집 방문표시
+        var keys = board.pieces.Keys.ToList();
 
-        // 1) 라인 매치(3축): "축의 음(-) 방향 이웃이 같은 타입"이면 앵커가 아니므로 스킵 -> 중복 제거
+        // ---------- 1) 라인 매치 먼저 수집 ----------
+        var lineMatches = new HashSet<Vector3Int>();
         foreach (var s in keys)
         {
             if (!board.pieces.TryGetValue(s, out var go)) continue;
             int type = go.GetComponent<Puzzle>().typeId;
 
-            foreach (var axis in PuzzleDirs.AXES)
+            foreach (var axis in PuzzleDirs.AXES) // {+,-} 쌍 3축
             {
-                // axis[0] = +방향, axis[1] = -방향이라고 가정
-                var prev = PuzzleDirs.Step(s, axis[1]);
-                if (IsSameType(prev, type)) continue; // 중복 방지(앵커 아님)
+                var prev = PuzzleDirs.Step(s, axis[1]);      // -방향 이웃이 같은 타입이면 앵커 아님
+                if (IsSameType(prev, type)) continue;
 
                 var line = CollectLineBoth(s, axis[0], axis[1], type);
                 if (line.Count >= Define.MIN_LINE)
-                    foreach (var c in line) result.Add(c);
+                    foreach (var c in line) lineMatches.Add(c);
             }
         }
 
-        // 2) 군집 매치(≥4, 면접촉 6방)
+        // 라인 매치가 있으면 "라인만" 반환 (군집은 이 턴에서 무시)
+        if (lineMatches.Count > 0)
+            return lineMatches;
+
+        // ---------- 2) 라인이 없을 때만 군집 매치 ----------
+        var clusterMatches = new HashSet<Vector3Int>();
+        var visited = new HashSet<Vector3Int>();
+
         foreach (var s in keys)
         {
             if (visited.Contains(s)) continue;
@@ -44,10 +49,10 @@ public class MatchFinder : MonoBehaviour
             int type = go.GetComponent<Puzzle>().typeId;
             var comp = FloodFillSameType(s, type, visited);
             if (comp.Count >= Define.MIN_CLUSTER)
-                foreach (var c in comp) result.Add(c);
+                foreach (var c in comp) clusterMatches.Add(c);
         }
 
-        return result;
+        return clusterMatches;
     }
 
     /// 특정 지점들(스왑한 두 셀 등) 주변만 부분 검사
@@ -73,8 +78,8 @@ public class MatchFinder : MonoBehaviour
 
             foreach (var axis in PuzzleDirs.AXES)
             {
-                var prev = PuzzleDirs.Step(s, axis[1]);
-                if (IsSameType(prev, type)) continue; // 앵커 아님
+                //var prev = PuzzleDirs.Step(s, axis[1]);
+                //if (IsSameType(prev, type)) continue; // 앵커 아님
 
                 var line = CollectLineBoth(s, axis[0], axis[1], type);
                 if (line.Count >= Define.MIN_LINE)

@@ -51,6 +51,9 @@ public class MatchGameLoop : MonoBehaviour
                 }
             }
 
+            yield return new WaitForSeconds(1);
+            
+
             // 제거 개수만큼 즉시 스폰 + 낙하 동시 처리
             yield return StartCoroutine(gravity.ApplyWithSpawn(matched.Count));
         }

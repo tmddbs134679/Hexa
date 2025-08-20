@@ -5,120 +5,66 @@ using System.Linq;
 
 /*
  * TopFiller — "스폰 전담"
- * - 퍼즐 프리팹을 스폰셀 위쪽(world pos)에 생성 (SpawnOne)
- * - 채우고 싶은 셀 목록/개수만 받아서, 실제 배치는 GravityWithSlide에 위임
- * - 보드 등록/낙하/슬라이드는 절대 하지 않음
+ * - 비어있는 셀을 골라, 그 셀의 위쪽(World Y+)에서 퍼즐 프리팹을 생성해 내려 꽂음
+ * - 생성/등록만 담당 (board.pieces 갱신 포함)
+ * - 낙하 슬라이드는 GravityWithSlide에서 처리
  */
-
 public class TopFiller : MonoBehaviour
 {
-    [Header("Refs")]
     public BoardState board;
-    public GravityWithSlide gravity;   // ★ 반드시 연결
-    public GameObject puzzlePrefab;
-    public Transform pieceParent;
-
     [Header("Spawn")]
-    public Vector3Int spawnCell;       // 스폰셀(그리드 좌표)
-    public float spawnOffsetY = 4f;    // 스폰 월드 위치를 셀 중심에서 위로 올림
-    private Vector3 spawnWorldPos;
+    public GameObject piecePrefab;
+    public Sprite[] typeSprites;        // 색 스프라이트(0~N-1)
+    public int colorCount = 6;          // 사용 색 개수(장애물/특수 제외)
 
-    [Header("Types")]
-    public Sprite[] typeSprites;
-    public int typeCount = 5;
-
-    public bool IsRunning { get; private set; }
-
-    void Awake()
+    // 초기 채우기 등에 사용
+    public IEnumerator SpawnSequence(int count, float interval, float fallDur)
     {
-        // 자동 바인딩(있으면 쓰고, 없으면 찾아봄)
-        if (!board) board = GetComponentInParent<BoardState>() ?? FindObjectOfType<BoardState>();
-        if (!gravity) gravity = GetComponentInParent<GravityWithSlide>() ?? FindObjectOfType<GravityWithSlide>();
+        // 위에서부터 보이게: y가 큰(위쪽) 순으로 비어있는 셀을 선택
+        var empties = board.EmptyCells()
+                           .OrderBy(c => board.WorldCenter(c).y) // <- 아래부터
+                           .Take(count)
+                           .ToList();
 
-        if (!board) { Debug.LogError("[TopFiller] BoardState missing"); enabled = false; return; }
-        if (!gravity) { Debug.LogError("[TopFiller] Gravity missing"); enabled = false; return; }
-
-        var center = board.WorldCenter(spawnCell);
-        spawnWorldPos = new Vector3(center.x, center.y + spawnOffsetY, center.z);
-    }
-
-    /// <summary>목표 셀들을 중력 규칙으로 채움(비어있는 칸 개수만큼만 보충)</summary>
-    public void FillCells(IEnumerable<Vector3Int> targetCells)
-    {
-        StartCoroutine(FillRoutine_ByTargets(targetCells));
-    }
-
-    /// <summary>개수만큼 중력 규칙으로 보충(초기화 편의용)</summary>
-    public void FillCount(int count)
-    {
-        StartCoroutine(FillRoutine_ByCount(count));
-    }
-
-
-    public IEnumerator SpawnSequence(int count, float minDelay = 0.0f, float maxDelay = 0.0f)
-    {
-        if (IsRunning) yield break;
-        IsRunning = true;
-
-        int left = Mathf.Max(0, count);
-        while (left-- > 0)
+        foreach (var cell in empties)
         {
-            // 한 번에 1개만 주입 → 낙하/슬라이드 끝날 때까지 대기
-            yield return StartCoroutine(gravity.ApplyWithSpawn(1));
-
-            // 살짝 템포 주고 싶으면
-            if (maxDelay > 0f)
-                yield return new WaitForSeconds(Random.Range(minDelay, maxDelay));
+            yield return SpawnInto(cell, fallDur);
+            if (interval > 0) yield return new WaitForSeconds(interval);
         }
-
-        IsRunning = false;
     }
 
-    private IEnumerator FillRoutine_ByTargets(IEnumerable<Vector3Int> targetCells)
+    // 특정 셀 채우기(위치 애니메이션 포함)
+    public IEnumerator SpawnInto(Vector3Int cell, float fallDur)
     {
-        if (IsRunning) yield break;
-        IsRunning = true;
+        if (!board.IsEmpty(cell)) yield break;
 
-        if (targetCells == null)
+        int type = Random.Range(0, Mathf.Min(colorCount, typeSprites.Length));
+        var go = Instantiate(piecePrefab);
+        var pz = go.GetComponent<Puzzle>();
+        pz.SetType(type, typeSprites[type]);
+
+        Vector3 target = board.WorldCenter(cell);
+        Vector3 from = target + Vector3.up * 2.0f;   // 화면 위에서 떨어지게
+        go.transform.position = from;
+
+        // 등록
+        board.pieces[cell] = go;
+
+        // 간단 이동 연출
+        float t = 0f;
+        while (t < fallDur)
         {
-            Debug.LogError("[TopFiller] targetCells is null");
-            IsRunning = false; yield break;
+            float u = t / Mathf.Max(fallDur, 0.0001f);
+            go.transform.position = Vector3.Lerp(from, target, u);
+            t += Time.deltaTime;
+            yield return null;
         }
-
-        var targets = targetCells as IList<Vector3Int> ?? targetCells.ToList();
-        int need = targets.Count(c => board.IsValidCell(c) && board.IsEmpty(c));
-
-        if (need > 0)
-            yield return StartCoroutine(gravity.ApplyWithSpawn(need));
-
-        IsRunning = false;
+        go.transform.position = target;
     }
 
-    private IEnumerator FillRoutine_ByCount(int count)
+    // 여러 셀 한꺼번에
+    public IEnumerator SpawnIntoMany(IEnumerable<Vector3Int> cells, float fallDur, float between = 0.02f)
     {
-        if (IsRunning) yield break;
-        IsRunning = true;
-
-        if (count > 0)
-            yield return StartCoroutine(gravity.ApplyWithSpawn(count));
-
-        IsRunning = false;
-    }
-
-    /// <summary>GravityWithSlide에서 스폰 큐에 넣을 때 호출</summary>
-    public GameObject SpawnOne()
-    {
-        var go = Instantiate(
-            puzzlePrefab,
-            spawnWorldPos,
-            Quaternion.identity,
-            pieceParent ? pieceParent : transform
-        );
-
-        var piece = go.GetComponent<Puzzle>();
-        int tid = Random.Range(0, Mathf.Max(1, typeCount));
-        var sprite = (typeSprites != null && tid < typeSprites.Length) ? typeSprites[tid] : null;
-        piece.SetType(tid, sprite);
-        return go;
+        foreach (var c in cells) { yield return SpawnInto(c, fallDur); if (between > 0) yield return new WaitForSeconds(between); }
     }
 }

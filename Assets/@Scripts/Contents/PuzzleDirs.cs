@@ -1,49 +1,30 @@
 ﻿using UnityEngine;
 
-/// Flat-Top + odd-q(열 오프셋). 좌표: (x=col, y=row), y는 위로 +1
+/// Flat-Top + odd-r(행 오프셋). 좌표: (x=col, y=row), y는 위로 +1
 public static class PuzzleDirs
 {
-    static bool IsOddCol(int x) => (x & 1) == 1;   //좌표값 기준으로 홀짝 판정
-
-    // 수평(매칭용만 사용, 중력에는 사용X)
-    public static Vector3Int E(Vector3Int c) => new(c.x + 1, c.y, 0);
-    public static Vector3Int W(Vector3Int c) => new(c.x - 1, c.y, 0);
-
-    // 수직
-    public static Vector3Int N(Vector3Int c) => new(c.x, c.y + 1, 0);
-    public static Vector3Int S(Vector3Int c) => new(c.x, c.y - 1, 0);   // ↓
-
-    // 대각 (열 홀짝에 따라 다름) — y는 위가 +1이므로, 아래는 대체로 y-1
-    public static Vector3Int SE(Vector3Int c) => IsOddCol(c.x) ? new(c.x + 1, c.y, 0)
-                                                               : new(c.x + 1, c.y - 1, 0);
-    public static Vector3Int SW(Vector3Int c) => IsOddCol(c.x) ? new(c.x - 1, c.y, 0)
-                                                               : new(c.x - 1, c.y - 1, 0);
-    public static Vector3Int NE(Vector3Int c) => IsOddCol(c.x) ? new(c.x + 1, c.y + 1, 0)
-                                                               : new(c.x + 1, c.y, 0);
-    public static Vector3Int NW(Vector3Int c) => IsOddCol(c.x) ? new(c.x - 1, c.y + 1, 0)
-                                                               : new(c.x - 1, c.y, 0);
-
-    //  중력 우선순위: 아래(S) → 아래오른쪽(SE) → 아래왼쪽(SW)
-    public static Vector3Int Down(Vector3Int c) => S(c);
-    public static Vector3Int DownRight(Vector3Int c) => SE(c);
-    public static Vector3Int DownLeft(Vector3Int c) => SW(c);
-
-    // MatchFinder 호환: 0..5 = E, SE, SW, W, NW, NE
-    public static Vector3Int Step(Vector3Int c, int dir) => dir switch
+    // 6방향 인덱스: 0:E, 1:NE, 2:NW, 3:W, 4:SW, 5:SE
+    public static Vector3Int Step(Vector3Int c, int dir)
     {
-        0 => E(c),
-        1 => SE(c),
-        2 => SW(c),
-        3 => W(c),
-        4 => NW(c),
-        _ => NE(c), // 5
-    };
+        bool odd = (c.y & 1) == 1; // odd-r
+        switch (dir)
+        {
+            case 0: return new Vector3Int(c.x + 1, c.y, 0);                         // E
+            case 3: return new Vector3Int(c.x - 1, c.y, 0);                         // W
+            case 1: return odd ? new Vector3Int(c.x + 1, c.y + 1, 0) : new Vector3Int(c.x, c.y + 1, 0); // NE
+            case 2: return odd ? new Vector3Int(c.x, c.y + 1, 0) : new Vector3Int(c.x - 1, c.y + 1, 0); // NW
+            case 4: return odd ? new Vector3Int(c.x, c.y - 1, 0) : new Vector3Int(c.x - 1, c.y - 1, 0); // SW
+            case 5: return odd ? new Vector3Int(c.x + 1, c.y - 1, 0) : new Vector3Int(c.x, c.y - 1, 0); // SE
+            default: return c;
+        }
+    }
 
-    // 직선 축쌍(3축): E-W, SE-NW, SW-NE
-    public static readonly int[][] AXES =
+    // 3개 축(양/음 방향쌍)
+    // axis[0] = +방향, axis[1] = -방향 (MatchFinder에서 이 전제를 사용)
+    public static readonly int[][] AXES = new int[][]
     {
-        new[]{0,3}, // E-W
-        new[]{1,4}, // SE-NW
-        new[]{2,5}, // SW-NE
+        new []{ 0, 3 }, // E <-> W
+        new []{ 1, 4 }, // NE <-> SW
+        new []{ 2, 5 }, // NW <-> SE
     };
 }

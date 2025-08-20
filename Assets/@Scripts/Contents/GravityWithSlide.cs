@@ -3,87 +3,121 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-/*
-    스크립트의 역할
-    퍼즐 제거 후 보드에 **중력 낙하(↓ → ↘ → ↙ 우선순위)**를 적용하고, 제거된 개수만큼 즉시 스폰해서 보충하는 코루틴.
- */
-
 public class GravityWithSlide : MonoBehaviour
 {
     public BoardState board;
-    public TopFiller filler;              // 스폰 셀/스폰 팩토리 사용
+    public TopFiller filler;
 
     [Header("Anim")]
-    public float moveDuration = 0.22f;
+    public float moveDurPerCell = 0.07f;   // 한 칸 떨어질 때 연출 속도
 
-    /// <summary>
-    /// 제거 개수만큼을 스폰 큐에서 즉시 보충하면서
-    /// 아래→우하→좌하로 캐스케이딩 낙하
-    /// </summary>
+    // 매치 제거 후: 기존 조각들 낙하 → 빈칸 수만큼 스폰 → 다시 낙하
     public IEnumerator ApplyWithSpawn(int spawnCount)
     {
-        // 미리 스폰 큐를 준비(게임오브젝트만 생성, board 등록은 나중)
-        var queue = new Queue<GameObject>();
-        for (int i = 0; i < spawnCount; i++)
-            queue.Enqueue(filler.SpawnOne()); // 스폰 월드 위치에 생성됨
+        // 1) 현재 조각 낙하
+        yield return CollapseAnimated();
 
-        bool changed;
-        do
-        {
-            changed = false;
+        // 2) 스폰 (빈칸 수만큼)
+        var empties = board.EmptyCells()
+                           .OrderBy(c => board.WorldCenter(c).y) // <- 아래부터
+                           .Take(spawnCount)
+                           .ToList();
 
-            // 위→아래 스캔: 내려갈 수 있는 것부터 이동
-            foreach (var kv in board.pieces.OrderByDescending(p => p.Key.y).ToList())
-            {
-                var from = kv.Key;
-                var piece = kv.Value;
-                var to = FindFallDestination(from);
-                if (to == from) continue;
+        yield return filler.SpawnIntoMany(empties, 0.12f, 0.01f);
 
-                changed = true;
-                board.pieces.Remove(from);
-                board.pieces[to] = piece;
-                yield return MovePiece(piece.transform, board.WorldCenter(to), moveDuration);
-            }
-
-            // 스폰 투입: 스폰셀 비어있으면 하나 밀어넣기(연속 투입 허용)
-            while (queue.Count > 0 && board.IsEmpty(filler.spawnCell))
-            {
-                var go = queue.Dequeue();
-                // 스폰셀에 배치
-                board.pieces[filler.spawnCell] = go;
-                yield return MovePiece(go.transform, board.WorldCenter(filler.spawnCell), moveDuration * 0.6f);
-                changed = true;
-            }
-
-        } while (changed);
+        // 3) 스폰 후 한 번 더 낙하(슬라이드 포함)
+        yield return CollapseAnimated();
     }
 
-    Vector3Int FindFallDestination(Vector3Int cell)
+    // 보드가 안정될 때까지 반복 낙하 (한 번에 최종 목적지까지)
+    public IEnumerator CollapseAnimated()
     {
-        var cur = cell;
-        while (true)
-        {
-            var d = PuzzleDirs.Down(cur);
-            var dr = PuzzleDirs.DownRight(cur);
-            var dl = PuzzleDirs.DownLeft(cur);
+        bool moved;
+        int safety = 0;
 
-            if (board.IsValidCell(d) && board.IsEmpty(d)) { cur = d; continue; }
-            if (board.IsValidCell(dr) && board.IsEmpty(dr)) { cur = dr; continue; }
-            if (board.IsValidCell(dl) && board.IsEmpty(dl)) { cur = dl; continue; }
-            break;
+        do
+        {
+            moved = false;
+            safety++;
+
+            // 아래(월드 y가 작은) -> 위 순으로 처리
+            var snapshot = board.pieces.ToList()
+                                .OrderBy(kv => board.WorldCenter(kv.Key).y)
+                                .ToList();
+
+            foreach (var kv in snapshot)
+            {
+                var fromCell = kv.Key;
+                var go = kv.Value;
+
+                if (!board.pieces.ContainsKey(fromCell)) continue; // 이미 이동/제거됨
+                var dest = FindFallDestination(fromCell);
+                if (dest == fromCell) continue;
+
+                moved = true;
+                // 사전 업데이트
+                board.pieces.Remove(fromCell);
+                board.pieces[dest] = go;
+
+                // 애니메이션: 경로 길이에 비례
+                float cells = Mathf.Max(1, Mathf.RoundToInt((board.WorldCenter(fromCell) - board.WorldCenter(dest)).magnitude));
+                yield return MoveTo(go.transform, board.WorldCenter(dest), moveDurPerCell * cells);
+            }
+
+        } while (moved && safety < 32);
+    }
+
+    // 목적지 탐색: "월드 Y가 더 낮은(아래쪽) 빈 이웃"으로만 이동 → 무한루프 없음
+    Vector3Int FindFallDestination(Vector3Int start)
+    {
+        var cur = start;
+        int guard = 0;
+        while (guard++ < 128)
+        {
+            var next = ChooseDownNeighbor(cur);
+            if (next == cur) break;               // 더 내려갈 곳 없음
+            cur = next;
         }
         return cur;
     }
 
-    IEnumerator MovePiece(Transform t, Vector3 to, float dur)
+
+
+    // 아래쪽으로 이동 가능한 이웃 중 하나를 선택(우선순위: 더 아래인 것 → x 차이 적은 것)
+    Vector3Int ChooseDownNeighbor(Vector3Int c)
     {
-        var from = t.position; float e = 0f;
-        while (e < dur)
+        var pos = board.WorldCenter(c);
+        // 6이웃 후보 중 "아래에 있고" "비어있는" 칸만
+        var candidates = new List<Vector3Int>();
+        for (int i = 0; i < 6; i++)
         {
-            t.position = Vector3.LerpUnclamped(from, to, e / dur);
-            e += Time.deltaTime; yield return null;
+            var n = PuzzleDirs.Step(c, i);
+            if (!board.IsValidCell(n) || !board.IsEmpty(n)) continue;
+
+            var wn = board.WorldCenter(n);
+            if (wn.y < pos.y - 1e-3f) candidates.Add(n); // y가 더 낮아야 '하강'
         }
-        t.position = to;
+
+        if (candidates.Count == 0) return c;
+
+        // 더 아래(y가 작은) 순, 그 다음 x 차이가 작은 순(직하 우선 느낌)
+        candidates = candidates
+            .OrderBy(n => board.WorldCenter(n).y)
+            .ThenBy(n => Mathf.Abs(board.WorldCenter(n).x - pos.x))
+            .ToList();
+
+        return candidates[0];
+    }
+
+    IEnumerator MoveTo(Transform tr, Vector3 to, float dur)
+    {
+        Vector3 a = tr.position; float t = 0f;
+        while (t < dur)
+        {
+            float u = t / Mathf.Max(dur, 0.0001f);
+            tr.position = Vector3.LerpUnclamped(a, to, u);
+            t += Time.deltaTime; yield return null;
+        }
+        tr.position = to;
     }
 }
