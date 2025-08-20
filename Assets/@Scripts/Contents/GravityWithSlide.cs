@@ -1,33 +1,38 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
+/*
+    ìŠ¤í¬ë¦½íŠ¸ì˜ ì—­í• 
+    í¼ì¦ ì œê±° í›„ ë³´ë“œì— **ì¤‘ë ¥ ë‚™í•˜(â†“ â†’ â†˜ â†’ â†™ ìš°ì„ ìˆœìœ„)**ë¥¼ ì ìš©í•˜ê³ , ì œê±°ëœ ê°œìˆ˜ë§Œí¼ ì¦‰ì‹œ ìŠ¤í°í•´ì„œ ë³´ì¶©í•˜ëŠ” ì½”ë£¨í‹´.
+ */
+
 public class GravityWithSlide : MonoBehaviour
 {
     public BoardState board;
-    public TopFiller filler;              // ½ºÆù ¼¿/½ºÆù ÆÑÅä¸® »ç¿ë
+    public TopFiller filler;              // ìŠ¤í° ì…€/ìŠ¤í° íŒ©í† ë¦¬ ì‚¬ìš©
 
     [Header("Anim")]
     public float moveDuration = 0.22f;
 
     /// <summary>
-    /// Á¦°Å °³¼ö¸¸Å­À» ½ºÆù Å¥¿¡¼­ Áï½Ã º¸ÃæÇÏ¸é¼­
-    /// ¾Æ·¡¡æ¿ìÇÏ¡æÁÂÇÏ·Î Ä³½ºÄÉÀÌµù ³«ÇÏ
+    /// ì œê±° ê°œìˆ˜ë§Œí¼ì„ ìŠ¤í° íì—ì„œ ì¦‰ì‹œ ë³´ì¶©í•˜ë©´ì„œ
+    /// ì•„ë˜â†’ìš°í•˜â†’ì¢Œí•˜ë¡œ ìºìŠ¤ì¼€ì´ë”© ë‚™í•˜
     /// </summary>
     public IEnumerator ApplyWithSpawn(int spawnCount)
     {
-        // ¹Ì¸® ½ºÆù Å¥¸¦ ÁØºñ(°ÔÀÓ¿ÀºêÁ§Æ®¸¸ »ı¼º, board µî·ÏÀº ³ªÁß)
+        // ë¯¸ë¦¬ ìŠ¤í° íë¥¼ ì¤€ë¹„(ê²Œì„ì˜¤ë¸Œì íŠ¸ë§Œ ìƒì„±, board ë“±ë¡ì€ ë‚˜ì¤‘)
         var queue = new Queue<GameObject>();
         for (int i = 0; i < spawnCount; i++)
-            queue.Enqueue(filler.SpawnOne()); // ½ºÆù ¿ùµå À§Ä¡¿¡ »ı¼ºµÊ
+            queue.Enqueue(filler.SpawnOne()); // ìŠ¤í° ì›”ë“œ ìœ„ì¹˜ì— ìƒì„±ë¨
 
         bool changed;
         do
         {
             changed = false;
 
-            // À§¡æ¾Æ·¡ ½ºÄµ: ³»·Á°¥ ¼ö ÀÖ´Â °ÍºÎÅÍ ÀÌµ¿
+            // ìœ„â†’ì•„ë˜ ìŠ¤ìº”: ë‚´ë ¤ê°ˆ ìˆ˜ ìˆëŠ” ê²ƒë¶€í„° ì´ë™
             foreach (var kv in board.pieces.OrderByDescending(p => p.Key.y).ToList())
             {
                 var from = kv.Key;
@@ -41,11 +46,11 @@ public class GravityWithSlide : MonoBehaviour
                 yield return MovePiece(piece.transform, board.WorldCenter(to), moveDuration);
             }
 
-            // ½ºÆù ÅõÀÔ: ½ºÆù¼¿ ºñ¾îÀÖÀ¸¸é ÇÏ³ª ¹Ğ¾î³Ö±â(¿¬¼Ó ÅõÀÔ Çã¿ë)
+            // ìŠ¤í° íˆ¬ì…: ìŠ¤í°ì…€ ë¹„ì–´ìˆìœ¼ë©´ í•˜ë‚˜ ë°€ì–´ë„£ê¸°(ì—°ì† íˆ¬ì… í—ˆìš©)
             while (queue.Count > 0 && board.IsEmpty(filler.spawnCell))
             {
                 var go = queue.Dequeue();
-                // ½ºÆù¼¿¿¡ ¹èÄ¡
+                // ìŠ¤í°ì…€ì— ë°°ì¹˜
                 board.pieces[filler.spawnCell] = go;
                 yield return MovePiece(go.transform, board.WorldCenter(filler.spawnCell), moveDuration * 0.6f);
                 changed = true;

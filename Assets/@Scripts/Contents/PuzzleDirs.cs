@@ -1,50 +1,45 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
-/// Flat-Top + odd-q(¿­ ¿ÀÇÁ¼Â) ·¹ÀÌ¾Æ¿ô Àü¿ë
-/// Unity Tilemap ÁÂÇ¥(x=col, y=row, y°¡ À§·Î Áõ°¡)
+/// Flat-Top + odd-q(ì—´ ì˜¤í”„ì…‹). ì¢Œí‘œ: (x=col, y=row), yëŠ” ìœ„ë¡œ +1
 public static class PuzzleDirs
 {
-    // ¦¡¦¡ axial(q,r)¿¡¼­ÀÇ ÀÌ¿ô (½Ã°è): E, SE, SW, W, NW, NE ¦¡¦¡
-    static readonly Vector2Int[] AXIAL_DIRS =
+    static bool IsOddCol(int x) => (x & 1) == 1;   //ì¢Œí‘œê°’ ê¸°ì¤€ìœ¼ë¡œ í™€ì§ íŒì •
+
+    // ìˆ˜í‰(ë§¤ì¹­ìš©ë§Œ ì‚¬ìš©, ì¤‘ë ¥ì—ëŠ” ì‚¬ìš©X)
+    public static Vector3Int E(Vector3Int c) => new(c.x + 1, c.y, 0);
+    public static Vector3Int W(Vector3Int c) => new(c.x - 1, c.y, 0);
+
+    // ìˆ˜ì§
+    public static Vector3Int N(Vector3Int c) => new(c.x, c.y + 1, 0);
+    public static Vector3Int S(Vector3Int c) => new(c.x, c.y - 1, 0);   // â†“
+
+    // ëŒ€ê° (ì—´ í™€ì§ì— ë”°ë¼ ë‹¤ë¦„) â€” yëŠ” ìœ„ê°€ +1ì´ë¯€ë¡œ, ì•„ë˜ëŠ” ëŒ€ì²´ë¡œ y-1
+    public static Vector3Int SE(Vector3Int c) => IsOddCol(c.x) ? new(c.x + 1, c.y, 0)
+                                                               : new(c.x + 1, c.y - 1, 0);
+    public static Vector3Int SW(Vector3Int c) => IsOddCol(c.x) ? new(c.x - 1, c.y, 0)
+                                                               : new(c.x - 1, c.y - 1, 0);
+    public static Vector3Int NE(Vector3Int c) => IsOddCol(c.x) ? new(c.x + 1, c.y + 1, 0)
+                                                               : new(c.x + 1, c.y, 0);
+    public static Vector3Int NW(Vector3Int c) => IsOddCol(c.x) ? new(c.x - 1, c.y + 1, 0)
+                                                               : new(c.x - 1, c.y, 0);
+
+    //  ì¤‘ë ¥ ìš°ì„ ìˆœìœ„: ì•„ë˜(S) â†’ ì•„ë˜ì˜¤ë¥¸ìª½(SE) â†’ ì•„ë˜ì™¼ìª½(SW)
+    public static Vector3Int Down(Vector3Int c) => S(c);
+    public static Vector3Int DownRight(Vector3Int c) => SE(c);
+    public static Vector3Int DownLeft(Vector3Int c) => SW(c);
+
+    // MatchFinder í˜¸í™˜: 0..5 = E, SE, SW, W, NW, NE
+    public static Vector3Int Step(Vector3Int c, int dir) => dir switch
     {
-        new(+1,  0), // 0 E
-        new( 0, +1), // 1 SE
-        new(-1, +1), // 2 SW
-        new(-1,  0), // 3 W
-        new( 0, -1), // 4 NW
-        new(+1, -1), // 5 NE
+        0 => E(c),
+        1 => SE(c),
+        2 => SW(c),
+        3 => W(c),
+        4 => NW(c),
+        _ => NE(c), // 5
     };
 
-    // ¦¡¦¡ odd-q <-> axial º¯È¯ (Flat-Top) ¦¡¦¡
-    // ref: redblobgames hex grids
-    static Vector2Int ToAxial(Vector3Int cell) // (x,y)->(q,r)
-    {
-        int q = cell.x;
-        int r = cell.y - ((cell.x - (cell.x & 1)) / 2);
-        return new Vector2Int(q, r);
-    }
-    static Vector3Int FromAxial(Vector2Int ar) // (q,r)->(x,y)
-    {
-        int x = ar.x;
-        int y = ar.y + ((ar.x - (ar.x & 1)) / 2);
-        return new Vector3Int(x, y, 0);
-    }
-
-    public static Vector3Int Step(Vector3Int c, int dir)
-    {
-        var ar = ToAxial(c);
-        var d = AXIAL_DIRS[dir];
-        ar.x += d.x; ar.y += d.y;
-        return FromAxial(ar);
-    }
-
-    // ¦¡¦¡ Áß·Â ¿ì¼±¼øÀ§: ¾Æ·¡ ¡æ ¿À¸¥ÂÊ ¡æ ¿ŞÂÊ ¦¡¦¡
-    // Flat-Top¿¡¼­ '¾Æ·¡'´Â ´ë°¢¼± ÇÏ³ªÀÔ´Ï´Ù. (¿©±â¼­´Â SE¸¦ ¾Æ·¡·Î Á¤ÀÇ)
-    public static Vector3Int Down(Vector3Int c) => Step(c, 1); // SE
-    public static Vector3Int DownRight(Vector3Int c) => Step(c, 0); // E
-    public static Vector3Int DownLeft(Vector3Int c) => Step(c, 2); // SW
-
-    // Á÷¼± Ãà½Ö(3Ãà)
+    // ì§ì„  ì¶•ìŒ(3ì¶•): E-W, SE-NW, SW-NE
     public static readonly int[][] AXES =
     {
         new[]{0,3}, // E-W

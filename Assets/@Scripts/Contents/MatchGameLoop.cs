@@ -3,6 +3,9 @@ using System.Collections;
 using System.Linq;
 using System.Collections.Generic;
 
+/*
+ 매치-3(헥사) 게임 루프를 코루틴으로 돌림: 초기 배치 → 매치 제거 → 낙하/보충 → 다시 매치… 를 **연쇄(cascade)**가 끝날 때까지 반복.
+ */
 public class MatchGameLoop : MonoBehaviour
 {
     [Header("Refs")]
@@ -12,7 +15,7 @@ public class MatchGameLoop : MonoBehaviour
     public MatchFinder matcher;
 
     [Header("Init")]
-    public int initialCount = 30;
+    public int initialCount = 1;
 
     void Start()
     {
@@ -21,23 +24,22 @@ public class MatchGameLoop : MonoBehaviour
 
     IEnumerator GameStartRoutine()
     {
-        // 초기 30칸: 아래->위, 좌->우 순서로 채움
-        var fillOrder = board.AllCells()
-                            .OrderBy(c => c.y)
-                            .ThenBy(c => c.x)
-                            .Take(initialCount)
-                            .ToList();
-        filler.FillCells(fillOrder);
-        // 초기 해소
-        yield return ResolveAllMatchesThenIdle();
-    }
+        // 시작하자마자 30칸 전부 꽉 채운 상태로 세팅
+        yield return StartCoroutine(filler.SpawnSequence(30, 0.05f, 0.12f));
 
+        //StartCoroutine(ResolveAllMatchesThenIdle());
+        // 필요하면 초반부터 매치 제거 루프 돌리고 싶을 때만 아래 한 줄 유지
+        yield return ResolveAllMatchesThenIdle();
+
+        yield break;
+    }
     public IEnumerator ResolveAllMatchesThenIdle()
     {
         while (true)
         {
             var matched = matcher.CollectAllMatches();
-            if (matched.Count == 0) yield break;
+            if (matched.Count == 0) 
+                yield break;
 
             // 동시 제거
             foreach (var c in matched)

@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class Define 
 {
+
+    public const int MIN_LINE = 3;
+    public const int MIN_CLUSTER = 4;
+
+
     static readonly Vector3Int[] DIR_EVEN = { new(+1,0,0), new(0,+1,0), new(-1,+1,0),
                                                new(-1,0,0), new(0,-1,0), new(+1,-1,0) };
     static readonly Vector3Int[] DIR_ODD = { new(+1,0,0), new(+1,+1,0), new(0,+1,0),
