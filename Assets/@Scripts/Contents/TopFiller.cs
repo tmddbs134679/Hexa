@@ -17,6 +17,9 @@ public class TopFiller : MonoBehaviour
     public Sprite[] typeSprites;        // 색 스프라이트(0~N-1)
     public int colorCount = 6;          // 사용 색 개수(장애물/특수 제외)
 
+    [Header("Spawn Position")]
+    public float spawnHeightOffset = 2.0f; // (3,0) 위쪽으로 얼마나 올릴지
+
     // 초기 채우기 등에 사용
     public IEnumerator SpawnSequence(int count, float interval, float fallDur)
     {
@@ -25,7 +28,6 @@ public class TopFiller : MonoBehaviour
                            .OrderBy(c => board.WorldCenter(c).y) // <- 아래부터
                            .Take(count)
                            .ToList();
-
         foreach (var cell in empties)
         {
             yield return SpawnInto(cell, fallDur);
@@ -37,20 +39,24 @@ public class TopFiller : MonoBehaviour
     public IEnumerator SpawnInto(Vector3Int cell, float fallDur)
     {
         if (!board.IsEmpty(cell)) yield break;
-
         int type = Random.Range(0, Mathf.Min(colorCount, typeSprites.Length));
         var go = Instantiate(piecePrefab);
         var pz = go.GetComponent<Puzzle>();
         pz.SetType(type, typeSprites[type]);
 
         Vector3 target = board.WorldCenter(cell);
-        Vector3 from = target + Vector3.up * 2.0f;   // 화면 위에서 떨어지게
+
+        // 모든 조각을 (3,0) 셀 위쪽에서 스폰
+        Vector3Int spawnCell = new Vector3Int(3, 0, 0);
+        Vector3 spawnBase = board.WorldCenter(spawnCell);
+        Vector3 from = spawnBase + Vector3.up * spawnHeightOffset;
+
         go.transform.position = from;
 
         // 등록
         board.pieces[cell] = go;
 
-        // 간단 이동 연출
+        // 간단 이동 연출 (3,0 위쪽에서 목표 셀로)
         float t = 0f;
         while (t < fallDur)
         {
@@ -65,6 +71,10 @@ public class TopFiller : MonoBehaviour
     // 여러 셀 한꺼번에
     public IEnumerator SpawnIntoMany(IEnumerable<Vector3Int> cells, float fallDur, float between = 0.02f)
     {
-        foreach (var c in cells) { yield return SpawnInto(c, fallDur); if (between > 0) yield return new WaitForSeconds(between); }
+        foreach (var c in cells)
+        {
+            yield return SpawnInto(c, fallDur);
+            if (between > 0) yield return new WaitForSeconds(between);
+        }
     }
 }
