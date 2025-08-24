@@ -14,51 +14,51 @@ public class MatchGameLoop : MonoBehaviour
     public TopFiller filler;
     public GravityWithSlide gravity;
     public MatchFinder matcher;
-
+    
     [Header("Init")]
     public int initialCount = 1;
-
+    
     [Header("Animation Settings")]
     public float destroyAnimDuration = 0.3f;
     public float destroyScaleMultiplier = 1.5f;
     public bool useSequentialDestroy = false;
     public float sequentialDelay = 0.05f;
-
+    
     void Start()
     {
         StartCoroutine(GameStartRoutine());
     }
-
+    
     IEnumerator GameStartRoutine()
     {
         // 시작하자마자 30칸 전부 꽉 채운 상태로 세팅
-        yield return StartCoroutine(filler.SpawnSequence(30, 0.05f, 0.12f));
+        yield return StartCoroutine(gravity.FillInitialBoard(30));
         //StartCoroutine(ResolveAllMatchesThenIdle());
         // 필요하면 초반부터 매치 제거 루프 돌리고 싶을 때만 아래 한 줄 유지
         yield return ResolveAllMatchesThenIdle();
         yield break;
     }
-
+    
     public IEnumerator ResolveAllMatchesThenIdle()
     {
         while (true)
         {
             var matched = matcher.CollectAllMatches();
-            if (matched.Count == 0)
+            if (matched.Count == 0) 
                 yield break;
-
+                
             // 매치된 조각들의 파괴 애니메이션
             yield return StartCoroutine(DestroyMatchedPiecesWithAnimation(matched));
-
+            
             // 제거 개수만큼 즉시 스폰 + 낙하 동시 처리
             yield return StartCoroutine(gravity.ApplyWithSpawn(matched.Count));
         }
     }
-
+    
     IEnumerator DestroyMatchedPiecesWithAnimation(HashSet<Vector3Int> matchedCells)
     {
         List<Transform> matchedTransforms = new List<Transform>();
-
+        
         // 매치된 조각들의 Transform 수집
         foreach (var cell in matchedCells)
         {
@@ -67,7 +67,7 @@ public class MatchGameLoop : MonoBehaviour
                 matchedTransforms.Add(go.transform);
             }
         }
-
+        
         if (matchedTransforms.Count == 0)
         {
             // Transform이 없으면 그냥 보드에서만 제거
@@ -77,7 +77,7 @@ public class MatchGameLoop : MonoBehaviour
             }
             yield break;
         }
-
+        
         if (useSequentialDestroy)
         {
             // 순차적 파괴 애니메이션
@@ -89,7 +89,7 @@ public class MatchGameLoop : MonoBehaviour
             yield return StartCoroutine(DestroySimultaneously(matchedTransforms, matchedCells));
         }
     }
-
+    
     IEnumerator DestroySimultaneously(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
         // 동시에 모든 조각 애니메이션 시작
@@ -100,14 +100,14 @@ public class MatchGameLoop : MonoBehaviour
                 AnimatePieceDestroy(transform, 0f);
             }
         }
-
+        
         // 애니메이션 완료까지 대기
         yield return new WaitForSeconds(destroyAnimDuration);
-
+        
         // 실제 오브젝트 제거 및 보드에서 삭제
         CleanupPieces(transforms, cells);
     }
-
+    
     IEnumerator DestroySequentially(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
         // 순차적으로 애니메이션 시작
@@ -120,28 +120,28 @@ public class MatchGameLoop : MonoBehaviour
                 AnimatePieceDestroy(transform, delay);
             }
         }
-
+        
         // 모든 애니메이션 완료 대기 (마지막 조각의 시작 시간 + 애니메이션 시간)
         float totalTime = (transforms.Count - 1) * sequentialDelay + destroyAnimDuration;
         yield return new WaitForSeconds(totalTime);
-
+        
         // 정리
         CleanupPieces(transforms, cells);
     }
-
+    
     void AnimatePieceDestroy(Transform transform, float delay)
     {
         if (transform == null) return;
-
+        
         // 크기 확대 + 회전
         transform.DOScale(Vector3.one * destroyScaleMultiplier, destroyAnimDuration)
                  .SetDelay(delay)
                  .SetEase(Ease.OutBack);
-
+                 
         transform.DORotate(new Vector3(0, 0, 360), destroyAnimDuration, RotateMode.FastBeyond360)
                  .SetDelay(delay)
                  .SetEase(Ease.InOutQuad);
-
+        
         // 페이드 아웃
         var spriteRenderer = transform.GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
@@ -149,7 +149,7 @@ public class MatchGameLoop : MonoBehaviour
             spriteRenderer.DOFade(0f, destroyAnimDuration * 0.7f)
                           .SetDelay(delay + destroyAnimDuration * 0.3f);
         }
-
+        
         // CanvasGroup이 있다면 (UI 조각용)
         var canvasGroup = transform.GetComponent<CanvasGroup>();
         if (canvasGroup != null)
@@ -158,7 +158,7 @@ public class MatchGameLoop : MonoBehaviour
                        .SetDelay(delay + destroyAnimDuration * 0.3f);
         }
     }
-
+    
     void CleanupPieces(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
         // DoTween 정리 및 오브젝트 파괴
@@ -170,7 +170,7 @@ public class MatchGameLoop : MonoBehaviour
                 Destroy(transform.gameObject);
             }
         }
-
+        
         // 보드에서 제거
         foreach (var cell in cells)
         {

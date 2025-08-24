@@ -9,27 +9,156 @@ public class GravityWithSlide : MonoBehaviour
     public TopFiller filler;
 
     [Header("Anim")]
-    public float moveDurPerCell = 0.07f;   // 한 칸 떨어질 때 연출 속도
+    public float moveDurPerCell = 0.07f;
+    public float staggerDelay = 0.02f;
 
-    // 매치 제거 후: 기존 조각들 낙하 → 빈칸 수만큼 스폰 → 다시 낙하
+    [Header("Hex Gravity Settings")]
+    public float verticalThreshold = 0.3f; // x-정렬 허용치
+
+    // ---------- Core helpers ----------
+
+    private bool IsBottomRow(Vector3Int cell)
+    {
+        var all = board.AllCells().ToList();
+        if (all.Count == 0) return false;
+        float minY = all.Min(c => board.WorldCenter(c).y);
+        float y = board.WorldCenter(cell).y;
+        return y <= minY + 0.1f;
+    }
+
+    // 더 낮은 빈칸이 하나라도 있으면 "불안정"(= 더 내려가야 함)
+    private bool HasDownwardEmpty(Vector3Int cell)
+    {
+        var cw = board.WorldCenter(cell);
+        for (int i = 0; i < 6; i++)
+        {
+            var n = PuzzleDirs.Step(cell, i);
+            if (!board.IsValidCell(n) || !board.IsEmpty(n)) continue;
+            var nw = board.WorldCenter(n);
+            if (nw.y < cw.y - 0.01f) return true;
+        }
+        return false;
+    }
+
+    private bool IsStable(Vector3Int cell)
+    {
+        return !HasDownwardEmpty(cell);
+    }
+
+    // 낙하 목적지(수직 우선, 없으면 슬라이드) - 끝까지 반복
+    private Vector3Int FindFallDestinationWithSlide(Vector3Int start)
+    {
+        var current = start;
+        var cw = board.WorldCenter(current);
+        int guard = 0;
+
+        while (guard++ < 128)
+        {
+            Vector3Int best = current;
+            float bestScore = float.PositiveInfinity;
+
+            for (int i = 0; i < 6; i++)
+            {
+                var n = PuzzleDirs.Step(current, i);
+                if (!board.IsValidCell(n) || !board.IsEmpty(n)) continue;
+
+                var nw = board.WorldCenter(n);
+                float dy = cw.y - nw.y;
+                if (dy <= 0.01f) continue; // 아래쪽만
+
+                float dx = Mathf.Abs(cw.x - nw.x);
+
+                // 수직 우선: 같은 열이면 큰 보너스(낮은 점수)
+                float verticalBonus = dx < verticalThreshold ? -50f : 0f;
+
+                // 더 낮을수록(= y가 작을수록) 우선, 수직에 가까울수록 우선
+                float score = nw.y * 100f + dx * 10f + verticalBonus;
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = n;
+                }
+            }
+
+            if (best == current) break;
+
+            current = best;
+            cw = board.WorldCenter(current);
+        }
+
+        return current;
+    }
+
+    // (3,0)과 같은 '입구 열'의 최상단 빈칸 찾기
+    private Vector3Int FindTopEntryAbove(Vector3Int entryBase)
+    {
+        float ex = board.WorldCenter(entryBase).x;
+
+        var column = board.AllCells()
+            .Where(c => Mathf.Abs(board.WorldCenter(c).x - ex) < verticalThreshold * 0.9f)
+            .OrderByDescending(c => board.WorldCenter(c).y);
+
+        foreach (var c in column)
+            if (board.IsEmpty(c)) return c;
+
+        return entryBase;
+    }
+
+    // ---------- Public flows ----------
+
+    // 처음 채우기: (3,0) 입구로 하나 넣고 → Collapse로 ‘흘러내리기’를 30번 반복
+    public IEnumerator FillInitialBoard(int totalPieces)
+    {
+        for (int i = 0; i < totalPieces; i++)
+        {
+            yield return SpawnFromTopEntry();   // ⬅️ 목표 셀 직행 대신, 입구에 등록
+            yield return CollapseAnimated();    // ⬅️ 수직+슬라이드로 자연 낙하
+        }
+    }
+
+    // 매치 후 스폰도 동일 규칙으로
     public IEnumerator ApplyWithSpawn(int spawnCount)
     {
-        // 1) 현재 조각 낙하
         yield return CollapseAnimated();
 
-        // 2) 스폰 (빈칸 수만큼)
-        var empties = board.EmptyCells()
-                           .OrderBy(c => board.WorldCenter(c).y) // <- 아래부터
-                           .Take(spawnCount)
-                           .ToList();
+        for (int i = 0; i < spawnCount; i++)
+        {
+            yield return SpawnFromTopEntry();
+            // 필요하면 약간의 텀: yield return new WaitForSeconds(0.03f);
+        }
 
-        yield return filler.SpawnIntoMany(empties, 0.12f, 0.01f);
-
-        // 3) 스폰 후 한 번 더 낙하(슬라이드 포함)
         yield return CollapseAnimated();
     }
 
-    // 보드가 안정될 때까지 반복 낙하 (한 번에 최종 목적지까지)
+    // (핵심) (3,0) 위에서 등장 → (3,0) 열 최상단 빈칸에 '등록' → 자연 낙하
+    private IEnumerator SpawnFromTopEntry()
+    {
+        Vector3Int entryBase = new Vector3Int(3, 0, 0);
+        Vector3Int entry = FindTopEntryAbove(entryBase);
+        if (!board.IsEmpty(entry)) yield break;
+
+        int type = Random.Range(0, Mathf.Min(filler.colorCount, filler.typeSprites.Length));
+        var go = Instantiate(filler.piecePrefab);
+        var pz = go.GetComponent<Puzzle>();
+        pz.SetType(type, filler.typeSprites[type]);
+
+        Vector3 spawnTop = board.WorldCenter(entryBase) + Vector3.up * filler.spawnHeightOffset;
+        go.transform.position = spawnTop;
+
+        // 입구 셀에 등록(중요)
+        board.pieces[entry] = go;
+
+        // 입구까지 짧게 이동
+        yield return MoveTo(go.transform, board.WorldCenter(entry), 0.12f);
+
+        // 나머지는 자연 낙하
+        yield return CollapseAnimated();
+    }
+
+    // ---------- Gravity pass ----------
+
+    // 보드 안정화: 아래로 갈 곳이 있는 조각들을 모두 목적지까지 이동
     public IEnumerator CollapseAnimated()
     {
         bool moved;
@@ -40,84 +169,90 @@ public class GravityWithSlide : MonoBehaviour
             moved = false;
             safety++;
 
-            // 아래(월드 y가 작은) -> 위 순으로 처리
-            var snapshot = board.pieces.ToList()
-                                .OrderBy(kv => board.WorldCenter(kv.Key).y)
-                                .ToList();
+            // 아래부터(작은 y) 처리 → 충돌 최소화
+            var candidates = board.pieces
+                .Where(kv => !IsStable(kv.Key))
+                .OrderBy(kv => board.WorldCenter(kv.Key).y)
+                .ToList();
 
-            foreach (var kv in snapshot)
+            var moves = new List<(Transform tr, Vector3Int from, Vector3Int to)>();
+
+            foreach (var kv in candidates)
             {
-                var fromCell = kv.Key;
+                var from = kv.Key;
                 var go = kv.Value;
 
-                if (!board.pieces.ContainsKey(fromCell)) continue; // 이미 이동/제거됨
-                var dest = FindFallDestination(fromCell);
-                if (dest == fromCell) continue;
+                if (!board.pieces.ContainsKey(from)) continue;
+
+                var dest = FindFallDestinationWithSlide(from);
+                if (dest == from) continue;
 
                 moved = true;
-                // 사전 업데이트
-                board.pieces.Remove(fromCell);
+
+                board.pieces.Remove(from);
                 board.pieces[dest] = go;
 
-                // 애니메이션: 경로 길이에 비례
-                float cells = Mathf.Max(1, Mathf.RoundToInt((board.WorldCenter(fromCell) - board.WorldCenter(dest)).magnitude));
-                yield return MoveTo(go.transform, board.WorldCenter(dest), moveDurPerCell * cells);
+                moves.Add((go.transform, from, dest));
             }
 
-        } while (moved && safety < 32);
+            // 애니메이션 실행(약간의 계단식 지연)
+            if (moves.Count > 0)
+            {
+                var coroutines = new List<Coroutine>();
+                for (int i = 0; i < moves.Count; i++)
+                {
+                    var (tr, _, to) = moves[i];
+                    float delay = i * staggerDelay;
+                    coroutines.Add(StartCoroutine(MoveWithDelay(tr, board.WorldCenter(to), delay)));
+                }
+                foreach (var c in coroutines) yield return c;
+            }
+
+        } while (moved && safety < 20);
     }
 
-    // 목적지 탐색: "월드 Y가 더 낮은(아래쪽) 빈 이웃"으로만 이동 → 무한루프 없음
-    Vector3Int FindFallDestination(Vector3Int start)
+    private IEnumerator MoveWithDelay(Transform tr, Vector3 target, float delay)
     {
-        var cur = start;
-        int guard = 0;
-        while (guard++ < 128)
-        {
-            var next = ChooseDownNeighbor(cur);
-            if (next == cur) break;               // 더 내려갈 곳 없음
-            cur = next;
-        }
-        return cur;
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+        yield return MoveTo(tr, target, moveDurPerCell);
     }
 
-
-
-    // 아래쪽으로 이동 가능한 이웃 중 하나를 선택(우선순위: 더 아래인 것 → x 차이 적은 것)
-    Vector3Int ChooseDownNeighbor(Vector3Int c)
+    private IEnumerator MoveTo(Transform tr, Vector3 to, float dur)
     {
-        var pos = board.WorldCenter(c);
-        // 6이웃 후보 중 "아래에 있고" "비어있는" 칸만
-        var candidates = new List<Vector3Int>();
-        for (int i = 0; i < 6; i++)
-        {
-            var n = PuzzleDirs.Step(c, i);
-            if (!board.IsValidCell(n) || !board.IsEmpty(n)) continue;
+        Vector3 from = tr.position;
+        float t = 0f;
 
-            var wn = board.WorldCenter(n);
-            if (wn.y < pos.y - 1e-3f) candidates.Add(n); // y가 더 낮아야 '하강'
-        }
-
-        if (candidates.Count == 0) return c;
-
-        // 더 아래(y가 작은) 순, 그 다음 x 차이가 작은 순(직하 우선 느낌)
-        candidates = candidates
-            .OrderBy(n => board.WorldCenter(n).y)
-            .ThenBy(n => Mathf.Abs(board.WorldCenter(n).x - pos.x))
-            .ToList();
-
-        return candidates[0];
-    }
-
-    IEnumerator MoveTo(Transform tr, Vector3 to, float dur)
-    {
-        Vector3 a = tr.position; float t = 0f;
         while (t < dur)
         {
-            float u = t / Mathf.Max(dur, 0.0001f);
-            tr.position = Vector3.LerpUnclamped(a, to, u);
-            t += Time.deltaTime; yield return null;
+            float u = Mathf.Clamp01(t / Mathf.Max(0.0001f, dur));
+            // 가속 느낌 (중력감)
+            float eased = u * u;
+            tr.position = Vector3.LerpUnclamped(from, to, eased);
+            t += Time.deltaTime;
+            yield return null;
         }
         tr.position = to;
+    }
+
+    // ---------- (선택) 이전 보조 로직: 남겨두고 싶으면 아래 유지 ----------
+
+    private List<Vector3Int> GetDirectSupportNeighbors(Vector3Int cell)
+    {
+        var result = new List<Vector3Int>();
+        var cw = board.WorldCenter(cell);
+
+        for (int i = 0; i < 6; i++)
+        {
+            var n = PuzzleDirs.Step(cell, i);
+            if (!board.IsValidCell(n)) continue;
+
+            var nw = board.WorldCenter(n);
+            var yDiff = cw.y - nw.y;
+            var xDiff = Mathf.Abs(cw.x - nw.x);
+
+            if (yDiff > 0.1f && xDiff < verticalThreshold)
+                result.Add(n);
+        }
+        return result;
     }
 }

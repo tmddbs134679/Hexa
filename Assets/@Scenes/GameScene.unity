@@ -1553,6 +1553,8 @@ MonoBehaviour:
   board: {fileID: 586130700}
   filler: {fileID: 1635816583}
   moveDurPerCell: 0.04
+  staggerDelay: 0.02
+  verticalThreshold: 0.3
 --- !u!4 &1503545812
 Transform:
   m_ObjectHideFlags: 0
@@ -1728,6 +1730,10 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 318133a33ecb2d84eb75ed8f55ced1d3, type: 3}
   - {fileID: 21300000, guid: e4a9742dc0d27a840835d1212b8591a4, type: 3}
   colorCount: 6
+  spawnHeightOffset: 2
+  useFlowingAnimation: 1
+  flowStepDuration: 0.08
+  maxFlowSteps: 8
 --- !u!4 &1635816584
 Transform:
   m_ObjectHideFlags: 0
