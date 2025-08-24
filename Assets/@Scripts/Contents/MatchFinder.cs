@@ -2,136 +2,161 @@
 using System.Collections.Generic;
 using System.Linq;
 
+/// <summary>
+/// 라인(>=3) + 군집(>=4, 사슬 제외) 매치 탐색기
+/// - 라인 매치: 3축 직선 러닝카운트
+/// - 군집 매치: FloodFill 후 (사이클 존재 || 차수>=3) 인 컴포넌트만 인정
+/// </summary>
 public class MatchFinder : MonoBehaviour
 {
     public BoardState board;
+
+    [Header("Line Rule")]
+    public bool enableLineMatches = true;
+    public int minLineLen = 3;
+
+    [Header("Cluster Rule")]
+    public bool enableClusterMatches = true;
+    public int minClusterSize = 4;
+    // 군집 인정 조건: (사이클 존재 || 분기(차수>=3))
+    public bool clusterNeedsCycleOrBranch = true;
 
     // ---------------------------
     // Public API
     // ---------------------------
 
-    /// 보드 전체에서 라인(>=3) + 군집(>=4) 매치 수집
+    /// <summary>
+    /// 보드 전체에서 라인/군집 매치 수집 (합집합)
+    /// </summary>
     public HashSet<Vector3Int> CollectAllMatches()
     {
         var keys = board.pieces.Keys.ToList();
 
-        // ---------- 1) 라인 매치 먼저 수집 ----------
-        var lineMatches = new HashSet<Vector3Int>();
-        foreach (var s in keys)
+        var allMatches = new HashSet<Vector3Int>();
+
+        if (enableLineMatches)
         {
-            if (!board.pieces.TryGetValue(s, out var go)) continue;
-            int type = go.GetComponent<Puzzle>().typeId;
-
-            foreach (var axis in PuzzleDirs.AXES) // {+,-} 쌍 3축
-            {
-                var prev = PuzzleDirs.Step(s, axis[1]);      // -방향 이웃이 같은 타입이면 앵커 아님
-                if (IsSameType(prev, type)) continue;
-
-                var line = CollectLineBoth(s, axis[0], axis[1], type);
-                if (line.Count >= Define.MIN_LINE)
-                    foreach (var c in line) lineMatches.Add(c);
-            }
+            var lineMatches = CollectAllLineMatches(keys);
+            allMatches.UnionWith(lineMatches);
         }
 
-        // 라인 매치가 있으면 "라인만" 반환 (군집은 이 턴에서 무시)
-        if (lineMatches.Count > 0)
-            return lineMatches;
-
-        // ---------- 2) 라인이 없을 때만 군집 매치 ----------
-        var clusterMatches = new HashSet<Vector3Int>();
-        var visited = new HashSet<Vector3Int>();
-
-        foreach (var s in keys)
+        if (enableClusterMatches)
         {
-            if (visited.Contains(s)) continue;
-            if (!board.pieces.TryGetValue(s, out var go)) continue;
-
-            int type = go.GetComponent<Puzzle>().typeId;
-            var comp = FloodFillSameType(s, type, visited);
-            if (comp.Count >= Define.MIN_CLUSTER)
-                foreach (var c in comp) clusterMatches.Add(c);
+            var clusterMatches = CollectAllClusterMatches(keys);
+            allMatches.UnionWith(clusterMatches);
         }
 
-        return clusterMatches;
+        return allMatches;
     }
 
-    /// 특정 지점들(스왑한 두 셀 등) 주변만 부분 검사
-    public HashSet<Vector3Int> CollectMatchesFrom(params Vector3Int[] starts)
-        => CollectMatchesFrom((IEnumerable<Vector3Int>)starts);
+    // ---------------------------
+    // Line Matches
+    // ---------------------------
 
-    public HashSet<Vector3Int> CollectMatchesFrom(IEnumerable<Vector3Int> starts)
+    HashSet<Vector3Int> CollectAllLineMatches(List<Vector3Int> keys)
     {
         var result = new HashSet<Vector3Int>();
-        var visited = new HashSet<Vector3Int>();
 
-        // 변경 지점 + 그 주변 6칸까지 검사 후보에 포함(긴 라인이 지나갈 수 있으므로)
-        var frontier = new HashSet<Vector3Int>(starts);
-        foreach (var s in starts.ToList())
-            for (int i = 0; i < 6; i++)
-                frontier.Add(PuzzleDirs.Step(s, i));
-
-        // 1) 라인(중복 방지 앵커 방식)
-        foreach (var s in frontier)
+        foreach (var s in keys)
         {
             if (!board.pieces.TryGetValue(s, out var go)) continue;
             int type = go.GetComponent<Puzzle>().typeId;
 
+            // 3개 축(E-W, NE-SW, NW-SE)
             foreach (var axis in PuzzleDirs.AXES)
             {
-                //var prev = PuzzleDirs.Step(s, axis[1]);
-                //if (IsSameType(prev, type)) continue; // 앵커 아님
+                // 앵커 판정: -방향 이웃이 같은 타입이면 앵커 아님
+                var prev = PuzzleDirs.Step(s, axis[1]);
+                if (IsSameType(prev, type)) continue;
 
-                var line = CollectLineBoth(s, axis[0], axis[1], type);
-                if (line.Count >= Define.MIN_LINE)
-                    foreach (var c in line) result.Add(c);
+                // +방향으로 러닝카운트
+                var run = new List<Vector3Int> { s };
+                var cur = s;
+                while (true)
+                {
+                    var n = PuzzleDirs.Step(cur, axis[0]);
+                    if (!IsSameType(n, type)) break;
+
+                    run.Add(n);
+                    cur = n;
+                }
+
+                if (run.Count >= minLineLen)
+                    foreach (var c in run) result.Add(c);
             }
-        }
-
-        // 2) 군집
-        foreach (var s in frontier)
-        {
-            if (visited.Contains(s)) continue;
-            if (!board.pieces.TryGetValue(s, out var go)) continue;
-
-            int type = go.GetComponent<Puzzle>().typeId;
-            var comp = FloodFillSameType(s, type, visited);
-            if (comp.Count >= Define.MIN_CLUSTER)
-                foreach (var c in comp) result.Add(c);
         }
 
         return result;
     }
 
     // ---------------------------
-    // Internals
+    // Cluster Matches (FloodFill -> 사이클/분기 검사)
     // ---------------------------
 
-    // s에서 시작해 +방향/−방향 모두 따라가서 같은 타입 모으기(중복 제거)
-    List<Vector3Int> CollectLineBoth(Vector3Int s, int dirPos, int dirNeg, int type)
+    HashSet<Vector3Int> CollectAllClusterMatches(List<Vector3Int> keys)
     {
-        var line = new List<Vector3Int> { s };
+        var result = new HashSet<Vector3Int>();
+        var visited = new HashSet<Vector3Int>();
 
-        // +방향
-        var cur = s;
-        while (IsSameType(PuzzleDirs.Step(cur, dirPos), type))
-        { cur = PuzzleDirs.Step(cur, dirPos); line.Add(cur); }
+        foreach (var s in keys)
+        {
+            if (visited.Contains(s)) continue;
+            if (!board.pieces.TryGetValue(s, out var go)) continue;
 
-        // −방향
-        cur = s;
-        while (IsSameType(PuzzleDirs.Step(cur, dirNeg), type))
-        { cur = PuzzleDirs.Step(cur, dirNeg); line.Add(cur); }
+            int type = go.GetComponent<Puzzle>().typeId;
 
-        return line;
+            var comp = FloodFillSameType(s, type, visited);
+            if (comp.Count < minClusterSize) continue;
+
+            if (!clusterNeedsCycleOrBranch || IsClusterComponent(comp))
+            {
+                foreach (var c in comp) result.Add(c);
+            }
+        }
+
+        return result;
+    }
+    bool IsClusterComponent(HashSet<Vector3Int> comp)
+    {
+        if (comp.Count < minClusterSize) return false; // 보통 4
+
+        foreach (var a in comp)
+        {
+            // 6방향 중 인접한 두 방향 쌍만 검사 (i와 i±1)
+            for (int i = 0; i < 6; i++)
+            {
+                int left = (i + 5) % 6; // i의 왼쪽 인접
+                int right = (i + 1) % 6; // i의 오른쪽 인접
+
+                if (HasRhombusAt(a, i, left, comp)) return true;
+                if (HasRhombusAt(a, i, right, comp)) return true;
+            }
+        }
+        return false; // 마름모가 하나도 없으면 군집 아님
     }
 
-    List<Vector3Int> FloodFillSameType(Vector3Int start, int type, HashSet<Vector3Int> visited)
+    bool HasRhombusAt(Vector3Int a, int dirA, int dirB, HashSet<Vector3Int> comp)
     {
+        var b = PuzzleDirs.Step(a, dirA);       // a + dirA
+        var c = PuzzleDirs.Step(a, dirB);       // a + dirB
+        var d = PuzzleDirs.Step(b, dirB);       // a + dirA + dirB  (평행사변형의 4번째 꼭짓점)
+
+        return comp.Contains(b) && comp.Contains(c) && comp.Contains(d);
+    }
+
+    // ---------------------------
+    // Flood Fill (같은 type 연결 컴포넌트)
+    // ---------------------------
+
+    HashSet<Vector3Int> FloodFillSameType(Vector3Int start, int type, HashSet<Vector3Int> globalVisited)
+    {
+        var comp = new HashSet<Vector3Int>();
         var q = new Queue<Vector3Int>();
-        var comp = new List<Vector3Int>();
 
         if (!IsSameType(start, type)) return comp;
 
-        q.Enqueue(start); visited.Add(start);
+        globalVisited.Add(start);
+        q.Enqueue(start);
 
         while (q.Count > 0)
         {
@@ -141,15 +166,20 @@ public class MatchFinder : MonoBehaviour
             for (int i = 0; i < 6; i++)
             {
                 var n = PuzzleDirs.Step(c, i);
-                if (!visited.Contains(n) && IsSameType(n, type))
+                if (!globalVisited.Contains(n) && IsSameType(n, type))
                 {
-                    visited.Add(n);
+                    globalVisited.Add(n);
                     q.Enqueue(n);
                 }
             }
         }
+
         return comp;
     }
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
 
     bool IsSameType(Vector3Int c, int type)
         => board.pieces.TryGetValue(c, out var go) && go.GetComponent<Puzzle>().typeId == type;

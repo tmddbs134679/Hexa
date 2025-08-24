@@ -12,11 +12,88 @@ public class GravityWithSlide : MonoBehaviour
     public float moveDurPerCell = 0.07f;   // 셀 1칸 이동 시간
     public float staggerDelay = 0.02f;     // 여러 조각 이동 시 계단식 지연
 
+    // ★ 추가: 입구로 내려오는 구간도 칸당 속도와 동일하게 맞출지
+    public bool unifyEntrySpeedWithPerCell = true;
+
+    // ★ 선택: 위 옵션을 끄면 이 고정값을 사용
+    public float entryMoveDuration = 0.12f;
+
     [Header("Hex Gravity Settings")]
     public float verticalThreshold = 0.3f; // "같은 열"로 취급할 x 허용치
 
     // 좌/우 동률일 때 번갈아 선택하기 위한 상태
     private int slideParity = 0;
+
+    // ─────────────────────────────────────────────────────────────
+    // 칸 길이 기반 duration 계산 (입구 연출 속도 통일용)
+    // ─────────────────────────────────────────────────────────────
+    private float _cellStepLength = -1f;
+
+    // (3,0) 기준으로 "가장 아래" 이웃 한 칸의 월드 길이를 측정해서 캐시
+    float GetCellStepLength()
+    {
+        if (_cellStepLength > 0f) return _cellStepLength;
+
+        Vector3Int baseCell = new Vector3Int(3, 0, 0);
+        if (!board.IsValidCell(baseCell))
+        {
+            _cellStepLength = 1f; // fallback
+            return _cellStepLength;
+        }
+
+        Vector3 baseW = board.WorldCenter(baseCell);
+        float bestDy = 0f;      // 가장 음수(더 아래)인 y차
+        float bestDist = -1f;
+
+        // 6방향 중 '아래'로 더 낮은 이웃을 찾음
+        for (int i = 0; i < 6; i++)
+        {
+            var n = PuzzleDirs.Step(baseCell, i);
+            if (!board.IsValidCell(n)) continue;
+
+            Vector3 nw = board.WorldCenter(n);
+            float dy = nw.y - baseW.y;
+            float dist = Vector3.Distance(baseW, nw);
+
+            if (dy < bestDy) // 더 아래쪽(더 작은 y)
+            {
+                bestDy = dy;
+                bestDist = dist;
+            }
+        }
+
+        if (bestDist > 0f)
+        {
+            _cellStepLength = bestDist;
+            return _cellStepLength;
+        }
+
+        // 만약 '아래' 이웃을 못 찾으면(맵 회전 등) 임의의 인접 이웃 거리로 대체
+        for (int i = 0; i < 6; i++)
+        {
+            var n = PuzzleDirs.Step(baseCell, i);
+            if (!board.IsValidCell(n)) continue;
+
+            float dist = Vector3.Distance(baseW, board.WorldCenter(n));
+            if (dist > 0f)
+            {
+                _cellStepLength = dist;
+                return _cellStepLength;
+            }
+        }
+
+        _cellStepLength = 1f; // 최후의 보루
+        return _cellStepLength;
+    }
+
+    // 두 지점 사이 거리를 '칸 수'로 환산해서 moveDurPerCell에 맞춘 duration을 반환
+    float DurationByPerCell(Vector3 from, Vector3 to)
+    {
+        float d = Vector3.Distance(from, to);
+        float one = Mathf.Max(0.0001f, GetCellStepLength());
+        float cells = d / one; // 실수 칸수
+        return cells * Mathf.Max(0.0001f, moveDurPerCell);
+    }
 
     // ====== 초기 채우기 & 스폰 흐름 ======
 
@@ -65,8 +142,10 @@ public class GravityWithSlide : MonoBehaviour
         // ✅ 입구 셀에 등록 (중요: 등록해야 이후 Collapse가 이 조각을 인식함)
         board.pieces[entry] = go;
 
-        // 입구까지 짧게 이동(연출)
-        yield return MoveTo(go.transform, board.WorldCenter(entry), 0.12f);
+        // 입구까지 이동(연출) — ★같은 속도로 보이게 자동 계산 적용
+        Vector3 entryPos = board.WorldCenter(entry);
+        float dur = unifyEntrySpeedWithPerCell ? DurationByPerCell(from, entryPos) : entryMoveDuration;
+        yield return MoveTo(go.transform, entryPos, dur);
     }
 
     // (3,0)과 같은 '입구 열'의 최상단 빈칸 찾기
@@ -240,4 +319,6 @@ public class GravityWithSlide : MonoBehaviour
         }
         tr.position = to;
     }
+
+
 }

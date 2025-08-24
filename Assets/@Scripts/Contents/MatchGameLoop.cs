@@ -1,11 +1,11 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections;
 using System.Linq;
 using System.Collections.Generic;
 using DG.Tweening;
 
 /*
- ¸ÅÄ¡-3(Çí»ç) °ÔÀÓ ·çÇÁ¸¦ ÄÚ·çÆ¾À¸·Î µ¹¸²: ÃÊ±â ¹èÄ¡ ¡æ ¸ÅÄ¡ Á¦°Å ¡æ ³«ÇÏ/º¸Ãæ ¡æ ´Ù½Ã ¸ÅÄ¡¡¦ ¸¦ **¿¬¼â(cascade)**°¡ ³¡³¯ ¶§±îÁö ¹İº¹.
+ ë§¤ì¹˜-3(í—¥ì‚¬) ê²Œì„ ë£¨í”„ë¥¼ ì½”ë£¨í‹´ìœ¼ë¡œ ëŒë¦¼: ì´ˆê¸° ë°°ì¹˜ â†’ ë§¤ì¹˜ ì œê±° â†’ ë‚™í•˜/ë³´ì¶© â†’ ë‹¤ì‹œ ë§¤ì¹˜â€¦ ë¥¼ **ì—°ì‡„(cascade)**ê°€ ëë‚  ë•Œê¹Œì§€ ë°˜ë³µ.
  */
 public class MatchGameLoop : MonoBehaviour
 {
@@ -31,10 +31,10 @@ public class MatchGameLoop : MonoBehaviour
     
     IEnumerator GameStartRoutine()
     {
-        // ½ÃÀÛÇÏÀÚ¸¶ÀÚ 30Ä­ ÀüºÎ ²Ë Ã¤¿î »óÅÂ·Î ¼¼ÆÃ
+        // ì‹œì‘í•˜ìë§ˆì 30ì¹¸ ì „ë¶€ ê½‰ ì±„ìš´ ìƒíƒœë¡œ ì„¸íŒ…
         yield return StartCoroutine(gravity.FillInitialBoard(30));
         //StartCoroutine(ResolveAllMatchesThenIdle());
-        // ÇÊ¿äÇÏ¸é ÃÊ¹İºÎÅÍ ¸ÅÄ¡ Á¦°Å ·çÇÁ µ¹¸®°í ½ÍÀ» ¶§¸¸ ¾Æ·¡ ÇÑ ÁÙ À¯Áö
+        // í•„ìš”í•˜ë©´ ì´ˆë°˜ë¶€í„° ë§¤ì¹˜ ì œê±° ë£¨í”„ ëŒë¦¬ê³  ì‹¶ì„ ë•Œë§Œ ì•„ë˜ í•œ ì¤„ ìœ ì§€
         yield return ResolveAllMatchesThenIdle();
         yield break;
     }
@@ -47,10 +47,10 @@ public class MatchGameLoop : MonoBehaviour
             if (matched.Count == 0) 
                 yield break;
                 
-            // ¸ÅÄ¡µÈ Á¶°¢µéÀÇ ÆÄ±« ¾Ö´Ï¸ŞÀÌ¼Ç
+            // ë§¤ì¹˜ëœ ì¡°ê°ë“¤ì˜ íŒŒê´´ ì• ë‹ˆë©”ì´ì…˜
             yield return StartCoroutine(DestroyMatchedPiecesWithAnimation(matched));
             
-            // Á¦°Å °³¼ö¸¸Å­ Áï½Ã ½ºÆù + ³«ÇÏ µ¿½Ã Ã³¸®
+            // ì œê±° ê°œìˆ˜ë§Œí¼ ì¦‰ì‹œ ìŠ¤í° + ë‚™í•˜ ë™ì‹œ ì²˜ë¦¬
             yield return StartCoroutine(gravity.ApplyWithSpawn(matched.Count));
         }
     }
@@ -59,7 +59,7 @@ public class MatchGameLoop : MonoBehaviour
     {
         List<Transform> matchedTransforms = new List<Transform>();
         
-        // ¸ÅÄ¡µÈ Á¶°¢µéÀÇ Transform ¼öÁı
+        // ë§¤ì¹˜ëœ ì¡°ê°ë“¤ì˜ Transform ìˆ˜ì§‘
         foreach (var cell in matchedCells)
         {
             if (board.pieces.TryGetValue(cell, out var go) && go != null)
@@ -70,7 +70,7 @@ public class MatchGameLoop : MonoBehaviour
         
         if (matchedTransforms.Count == 0)
         {
-            // TransformÀÌ ¾øÀ¸¸é ±×³É º¸µå¿¡¼­¸¸ Á¦°Å
+            // Transformì´ ì—†ìœ¼ë©´ ê·¸ëƒ¥ ë³´ë“œì—ì„œë§Œ ì œê±°
             foreach (var cell in matchedCells)
             {
                 board.pieces.Remove(cell);
@@ -80,19 +80,19 @@ public class MatchGameLoop : MonoBehaviour
         
         if (useSequentialDestroy)
         {
-            // ¼øÂ÷Àû ÆÄ±« ¾Ö´Ï¸ŞÀÌ¼Ç
+            // ìˆœì°¨ì  íŒŒê´´ ì• ë‹ˆë©”ì´ì…˜
             yield return StartCoroutine(DestroySequentially(matchedTransforms, matchedCells));
         }
         else
         {
-            // µ¿½Ã ÆÄ±« ¾Ö´Ï¸ŞÀÌ¼Ç
+            // ë™ì‹œ íŒŒê´´ ì• ë‹ˆë©”ì´ì…˜
             yield return StartCoroutine(DestroySimultaneously(matchedTransforms, matchedCells));
         }
     }
     
     IEnumerator DestroySimultaneously(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
-        // µ¿½Ã¿¡ ¸ğµç Á¶°¢ ¾Ö´Ï¸ŞÀÌ¼Ç ½ÃÀÛ
+        // ë™ì‹œì— ëª¨ë“  ì¡°ê° ì• ë‹ˆë©”ì´ì…˜ ì‹œì‘
         foreach (var transform in transforms)
         {
             if (transform != null)
@@ -101,16 +101,16 @@ public class MatchGameLoop : MonoBehaviour
             }
         }
         
-        // ¾Ö´Ï¸ŞÀÌ¼Ç ¿Ï·á±îÁö ´ë±â
+        // ì• ë‹ˆë©”ì´ì…˜ ì™„ë£Œê¹Œì§€ ëŒ€ê¸°
         yield return new WaitForSeconds(destroyAnimDuration);
         
-        // ½ÇÁ¦ ¿ÀºêÁ§Æ® Á¦°Å ¹× º¸µå¿¡¼­ »èÁ¦
+        // ì‹¤ì œ ì˜¤ë¸Œì íŠ¸ ì œê±° ë° ë³´ë“œì—ì„œ ì‚­ì œ
         CleanupPieces(transforms, cells);
     }
     
     IEnumerator DestroySequentially(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
-        // ¼øÂ÷ÀûÀ¸·Î ¾Ö´Ï¸ŞÀÌ¼Ç ½ÃÀÛ
+        // ìˆœì°¨ì ìœ¼ë¡œ ì• ë‹ˆë©”ì´ì…˜ ì‹œì‘
         for (int i = 0; i < transforms.Count; i++)
         {
             var transform = transforms[i];
@@ -121,11 +121,11 @@ public class MatchGameLoop : MonoBehaviour
             }
         }
         
-        // ¸ğµç ¾Ö´Ï¸ŞÀÌ¼Ç ¿Ï·á ´ë±â (¸¶Áö¸· Á¶°¢ÀÇ ½ÃÀÛ ½Ã°£ + ¾Ö´Ï¸ŞÀÌ¼Ç ½Ã°£)
+        // ëª¨ë“  ì• ë‹ˆë©”ì´ì…˜ ì™„ë£Œ ëŒ€ê¸° (ë§ˆì§€ë§‰ ì¡°ê°ì˜ ì‹œì‘ ì‹œê°„ + ì• ë‹ˆë©”ì´ì…˜ ì‹œê°„)
         float totalTime = (transforms.Count - 1) * sequentialDelay + destroyAnimDuration;
         yield return new WaitForSeconds(totalTime);
         
-        // Á¤¸®
+        // ì •ë¦¬
         CleanupPieces(transforms, cells);
     }
     
@@ -133,7 +133,7 @@ public class MatchGameLoop : MonoBehaviour
     {
         if (transform == null) return;
         
-        // Å©±â È®´ë + È¸Àü
+        // í¬ê¸° í™•ëŒ€ + íšŒì „
         transform.DOScale(Vector3.one * destroyScaleMultiplier, destroyAnimDuration)
                  .SetDelay(delay)
                  .SetEase(Ease.OutBack);
@@ -142,7 +142,7 @@ public class MatchGameLoop : MonoBehaviour
                  .SetDelay(delay)
                  .SetEase(Ease.InOutQuad);
         
-        // ÆäÀÌµå ¾Æ¿ô
+        // í˜ì´ë“œ ì•„ì›ƒ
         var spriteRenderer = transform.GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
         {
@@ -150,7 +150,7 @@ public class MatchGameLoop : MonoBehaviour
                           .SetDelay(delay + destroyAnimDuration * 0.3f);
         }
         
-        // CanvasGroupÀÌ ÀÖ´Ù¸é (UI Á¶°¢¿ë)
+        // CanvasGroupì´ ìˆë‹¤ë©´ (UI ì¡°ê°ìš©)
         var canvasGroup = transform.GetComponent<CanvasGroup>();
         if (canvasGroup != null)
         {
@@ -161,17 +161,17 @@ public class MatchGameLoop : MonoBehaviour
     
     void CleanupPieces(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
-        // DoTween Á¤¸® ¹× ¿ÀºêÁ§Æ® ÆÄ±«
+        // DoTween ì •ë¦¬ ë° ì˜¤ë¸Œì íŠ¸ íŒŒê´´
         foreach (var transform in transforms)
         {
             if (transform != null)
             {
-                transform.DOKill(); // ¸Ş¸ğ¸® ´©¼ö ¹æÁö
+                transform.DOKill(); // ë©”ëª¨ë¦¬ ëˆ„ìˆ˜ ë°©ì§€
                 Destroy(transform.gameObject);
             }
         }
         
-        // º¸µå¿¡¼­ Á¦°Å
+        // ë³´ë“œì—ì„œ ì œê±°
         foreach (var cell in cells)
         {
             board.pieces.Remove(cell);
