@@ -1,38 +1,45 @@
-﻿using UnityEngine;
+﻿using System; // Obsolete attribute
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Random = UnityEngine.Random;
 
 /*
  * TopFiller — "스폰 전담"
- * - 비어있는 셀을 골라, 그 셀의 위쪽(World Y+)에서 퍼즐 프리팹을 생성해 내려 꽂음
- * - 생성/등록만 담당 (board.pieces 갱신 포함)
- * - 낙하 슬라이드는 GravityWithSlide에서 처리
+ * - 프리팹/스킨 데이터 보관
+ * - (과거) 비어있는 셀을 골라 해당 셀로 바로 꽂는 유틸들 포함 → 지금은 GravityWithSlide로 대체
  */
 public class TopFiller : MonoBehaviour
 {
     public BoardState board;
+
     [Header("Spawn")]
     public GameObject piecePrefab;
-    public Sprite[] typeSprites;        // 색 스프라이트(0~N-1)
-    public int colorCount = 6;          // 사용 색 개수(장애물/특수 제외)
+    public Sprite[] typeSprites;       // 색 스프라이트(0~N-1)
+    public int colorCount = 6;         // 사용 색 개수(장애물/특수 제외)
 
     [Header("Spawn Position")]
     public float spawnHeightOffset = 2.0f; // (3,0) 위쪽으로 얼마나 올릴지
 
-    [Header("Flowing Animation")]
-    public bool useFlowingAnimation = true;     // 흘러내리는 애니메이션 사용 여부
-    public float flowStepDuration = 0.08f;      // 각 단계별 이동 시간
-    public int maxFlowSteps = 8;               // 최대 흘러내리기 단계 수
+    [Header("Flowing Animation (deprecated path visuals)")]
+    public bool useFlowingAnimation = true; // 흘러내리는 애니메이션 사용 여부
+    public float flowStepDuration = 0.08f;  // 각 단계별 이동 시간
+    public int maxFlowSteps = 8;            // 최대 흘러내리기 단계 수
 
-    // 초기 채우기 등에 사용
+    // ─────────────────────────────────────────────────────────────
+    // 아래 메서드들은 이제 사용 금지: GravityWithSlide.FillInitialBoard / ApplyWithSpawn 사용
+    // ─────────────────────────────────────────────────────────────
+
+    [Obsolete("Use GravityWithSlide.FillInitialBoard / ApplyWithSpawn instead.")]
     public IEnumerator SpawnSequence(int count, float interval, float fallDur)
     {
-       
+        // 위에서부터 보이게: y가 큰(위쪽) 순으로 비어있는 셀을 선택
         var empties = board.EmptyCells()
                            .OrderBy(c => board.WorldCenter(c).y) // <- 아래부터
                            .Take(count)
                            .ToList();
+
         foreach (var cell in empties)
         {
             yield return SpawnInto(cell, fallDur);
@@ -40,7 +47,7 @@ public class TopFiller : MonoBehaviour
         }
     }
 
-    // 특정 셀 채우기(위치 애니메이션 포함)
+    [Obsolete("Use GravityWithSlide.FillInitialBoard / ApplyWithSpawn instead.")]
     public IEnumerator SpawnInto(Vector3Int cell, float fallDur)
     {
         if (!board.IsEmpty(cell)) yield break;
@@ -58,13 +65,15 @@ public class TopFiller : MonoBehaviour
 
         go.transform.position = from;
 
-        // 등록
+        // 등록 (직접 삽입 방식 — 현재는 사용 비권장)
         board.pieces[cell] = go;
 
         if (useFlowingAnimation)
         {
             // 흘러내리는 연출
-            yield return StartCoroutine(FlowToTarget(go.transform, from, target));
+            yield return StartCoroutine(DirectMove(go.transform, from, new Vector3(from.x, target.y + 1f, from.z), flowStepDuration));
+            yield return StartCoroutine(DirectMove(go.transform, new Vector3(from.x, target.y + 1f, from.z), Vector3.Lerp(new Vector3(from.x, target.y + 1f, from.z), target, 0.7f), flowStepDuration));
+            yield return StartCoroutine(DirectMove(go.transform, Vector3.Lerp(new Vector3(from.x, target.y + 1f, from.z), target, 0.7f), target, flowStepDuration));
         }
         else
         {
@@ -73,49 +82,7 @@ public class TopFiller : MonoBehaviour
         }
     }
 
-    // 흘러내리는 애니메이션 - 중간 경로점들을 통해 자연스럽게 이동
-    IEnumerator FlowToTarget(Transform transform, Vector3 start, Vector3 target)
-    {
-        List<Vector3> waypoints = CalculateHexFlowPath(start, target);
-
-        for (int i = 1; i < waypoints.Count; i++)
-        {
-            Vector3 from = waypoints[i - 1];
-            Vector3 to = waypoints[i];
-
-            yield return StartCoroutine(DirectMove(transform, from, to, flowStepDuration));
-        }
-    }
-
-
-
-    // 더 자연스러운 흘러내리기 경로 (헥사곤 그리드 고려)
-    List<Vector3> CalculateHexFlowPath(Vector3 start, Vector3 target)
-    {
-        List<Vector3> waypoints = new List<Vector3>();
-        waypoints.Add(start);
-
-        // 스폰 지점에서 목표까지의 가상 경로를 헥사곤 그리드 방향으로 계산
-        Vector3Int spawnCell = new Vector3Int(3, 0, 0);
-        Vector3Int targetCell = board.tilemap.WorldToCell(target);
-
-        Vector3 current = start;
-
-        // 일단 아래로 떨어뜨리기
-        Vector3 dropPoint = new Vector3(start.x, target.y + 1f, start.z);
-        waypoints.Add(dropPoint);
-
-        // 목표 쪽으로 흘러가기
-        Vector3 midPoint = Vector3.Lerp(dropPoint, target, 0.7f);
-        waypoints.Add(midPoint);
-
-        // 최종 목표
-        waypoints.Add(target);
-
-        return waypoints;
-    }
-
-    // 직선 이동 (기존 방식)
+    // 직선 이동 유틸
     IEnumerator DirectMove(Transform transform, Vector3 from, Vector3 to, float duration)
     {
         float t = 0f;
@@ -129,7 +96,8 @@ public class TopFiller : MonoBehaviour
         transform.position = to;
     }
 
-    // 여러 셀 한꺼번에
+    // 여러 셀 한꺼번에 (현재는 사용 비권장)
+    [Obsolete("Use GravityWithSlide.FillInitialBoard / ApplyWithSpawn instead.")]
     public IEnumerator SpawnIntoMany(IEnumerable<Vector3Int> cells, float fallDur, float between = 0.02f)
     {
         foreach (var c in cells)
