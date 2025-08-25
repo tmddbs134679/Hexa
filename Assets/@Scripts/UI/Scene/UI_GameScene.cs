@@ -1,7 +1,10 @@
+using DG.Tweening;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UI_GameScene : UI_Scene
 {
@@ -20,10 +23,12 @@ public class UI_GameScene : UI_Scene
     enum Texts
     {
         ObstacleText,
-        MoveCountText
+        MoveCountText,
+        ScoreText
     }
     #endregion
-
+    public Canvas mainCanvas;                 // 인스펙터에서 연결(Overlay면 WorldCamera 비워도 됨)
+    public GameObject scoreFloaterPrefab;
     [SerializeField] private UI_ClearPopup _clearPopup;
     public override bool Init()
     {
@@ -59,6 +64,8 @@ public class UI_GameScene : UI_Scene
         Managers.Game.OnMovesChanged += HandleMovesChanged;
         Managers.Game.OnObstacleProgressChanged += HandleObstacleChanged;
         Managers.Game.OnStageCleared += HandleStageCleared;
+        Managers.Game.OnScoreChanged += HandleScoreChanged;
+        Managers.Game.OnScorePopup += HandleScorePopup;
     }
 
     void OnDisable()
@@ -66,6 +73,8 @@ public class UI_GameScene : UI_Scene
         Managers.Game.OnMovesChanged -= HandleMovesChanged;
         Managers.Game.OnObstacleProgressChanged -= HandleObstacleChanged;
         Managers.Game.OnStageCleared -= HandleStageCleared;
+        Managers.Game.OnScoreChanged -= HandleScoreChanged;
+        Managers.Game.OnScorePopup -= HandleScorePopup;
     }
 
     private void Refresh()
@@ -105,4 +114,34 @@ public class UI_GameScene : UI_Scene
 
         _clearPopup.gameObject.SetActive(true);
     }
+
+    void HandleScoreChanged(int total)
+    {
+        var t = GetText((int)Texts.ScoreText);
+        if (t != null) t.text = total.ToString();
+    }
+
+    void HandleScorePopup(int added, Vector3 worldPos)
+    {
+        SpawnScorePopupWS(scoreFloaterPrefab, worldPos, added);
+    }
+
+    public void SpawnScorePopupWS(GameObject prefab, Vector3 worldPos, int amount)
+    {
+        var go = Instantiate(prefab);
+        go.GetComponent<Canvas>().sortingOrder = 100;
+        go.transform.position = worldPos;
+
+        var txt = go.GetComponentInChildren<TMP_Text>(); // UI.Text면 타입 변경
+        if (txt) txt.text = $"{amount}";
+
+        var cg = go.GetComponent<CanvasGroup>();
+        if (cg) cg.alpha = 1f;
+
+        // 위로 살짝 이동 + 페이드아웃
+        go.transform.DOMoveY(worldPos.y + 0.8f, 0.6f).SetEase(Ease.OutQuad);
+        if (cg) cg.DOFade(0f, 0.6f).SetEase(Ease.InQuad)
+               .OnComplete(() => Destroy(go));
+    }
+
 }

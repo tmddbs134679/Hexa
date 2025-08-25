@@ -166,6 +166,17 @@ public partial class  MatchGameLoop : MonoBehaviour
     
     void CleanupPieces(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
+        // 1) 이번에 사라지는 칸들을 "연결된 덩어리(군집/라인)"별로 나눔
+        var groups = SplitIntoGroups(cells);
+
+        // 2) 그룹당 60점 + 팝업 1개(그룹의 중심 위치)
+        foreach (var g in groups)
+        {
+            Vector3 center = GroupWorldCenter(g);
+            Managers.Game.ShowScorePopup(60, center); // ★ 팝업 1개
+        }
+        Managers.Game.AddScore(groups.Count * 60);     // ★ 점수: 그룹 수 × 60
+
         // DoTween 정리 및 오브젝트 파괴
         foreach (var transform in transforms)
         {
@@ -218,7 +229,6 @@ public partial class MatchGameLoop : MonoBehaviour
 
     IEnumerator Tops_RemoveArmed(float waitForAnim = 0.25f)
     {
-        // 애니 동기화가 필요하면 Animator 이벤트로 대체 가능
         yield return new WaitForSeconds(waitForAnim);
 
         var dead = board.pieces
@@ -226,6 +236,20 @@ public partial class MatchGameLoop : MonoBehaviour
             .Select(kv => kv.Key)
             .ToList();
 
+        if (dead.Count > 0)
+        {
+            // ★ 1) 팽이 위치마다 +500 팝업
+            foreach (var cell in dead)
+            {
+                Vector3 pos = board.WorldCenter(cell);
+                Managers.Game.ShowScorePopup(Define.POINT_SCORE_TOP, pos);
+            }
+
+            // ★ 2) 점수 총합 추가
+            Managers.Game.AddScore(Define.POINT_SCORE_TOP * dead.Count);
+        }
+
+        // 실제 제거
         foreach (var cell in dead)
         {
             var go = board.pieces[cell];
@@ -233,9 +257,9 @@ public partial class MatchGameLoop : MonoBehaviour
             Destroy(go);
         }
 
+        // (기존 진행도/클리어 업데이트가 여기라면 유지)
         if (dead.Count > 0)
             Managers.Game.AddTopDestroyed(dead.Count);
-
     }
 
     bool Tops_AnyLeft()
@@ -253,5 +277,53 @@ public partial class MatchGameLoop : MonoBehaviour
         // 모든 팽이 제거되면 스테이지 클리어
         //if (!Tops_AnyLeft())
         //    //OnStageCleared(); // 너의 기존 클리어 처리 호출
+    }
+
+    List<HashSet<Vector3Int>> SplitIntoGroups(HashSet<Vector3Int> cells)
+    {
+        var groups = new List<HashSet<Vector3Int>>();
+        var visited = new HashSet<Vector3Int>();
+
+        foreach (var start in cells)
+        {
+            if (visited.Contains(start)) continue;
+
+            var g = new HashSet<Vector3Int>();
+            var q = new Queue<Vector3Int>();
+            visited.Add(start);
+            q.Enqueue(start);
+
+            while (q.Count > 0)
+            {
+                var c = q.Dequeue();
+                g.Add(c);
+                for (int d = 0; d < 6; d++)
+                {
+                    var n = PuzzleDirs.Step(c, d);
+                    if (cells.Contains(n) && !visited.Contains(n))
+                    {
+                        visited.Add(n);
+                        q.Enqueue(n);
+                    }
+                }
+            }
+            groups.Add(g);
+        }
+        return groups;
+    }
+
+    // 그룹의 월드 중심(평균) 좌표
+    Vector3 GroupWorldCenter(HashSet<Vector3Int> group)
+    {
+        if (group == null || group.Count == 0) return Vector3.zero;
+        Vector3 sum = Vector3.zero;
+        int cnt = 0;
+        foreach (var c in group)
+        {
+            sum += board.WorldCenter(c);
+            cnt++;
+        }
+        return sum / Mathf.Max(1, cnt);
+
     }
 }

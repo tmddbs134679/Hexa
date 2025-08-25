@@ -17,7 +17,8 @@ public class GameManager : MonoBehaviour
 {
     public GameData _gameData = new GameData();
 
-
+    public event Action<int> OnScoreChanged;
+    public event Action<int, Vector3> OnScorePopup; // (추가된점수, 월드위치)
     public event Action<int> OnMovesChanged;                // 남은 이동 수
     public event Action<int, int> OnObstacleProgressChanged; // (파괴한 팽이 수, 목표)
     public event Action OnStageCleared;                     // 스테이지 클리어
@@ -25,6 +26,10 @@ public class GameManager : MonoBehaviour
     public int MovesLeft { get; private set; } = 15;
     public int TopGoal { get; private set; } = 5;  // 이번 레벨 목표 팽이 수
     public int TopsDestroyed { get; private set; } = 0;
+
+    public int Score { get; private set; }
+
+    Vector3? _taggedPopupWorld; // 다음 점수 팝업을 띄울 위치(스왑 성공 시 태그)
 
     #region Option
     public bool BGMOn
@@ -68,6 +73,8 @@ public class GameManager : MonoBehaviour
     // ===== 레벨 시작/업데이트 API =====
     public void BeginLevel(int startMoves, int topGoal)
     {
+        Score = 0;
+
         MovesLeft = Mathf.Max(0, startMoves);
         TopGoal = Mathf.Max(0, topGoal);
         TopsDestroyed = 0;
@@ -75,6 +82,7 @@ public class GameManager : MonoBehaviour
         // UI 초기화 이벤트 발행
         OnMovesChanged?.Invoke(MovesLeft);
         OnObstacleProgressChanged?.Invoke(TopsDestroyed, TopGoal);
+        OnScoreChanged?.Invoke(Score);
     }
 
     // 성공한 스왑 1회당 호출
@@ -96,5 +104,23 @@ public class GameManager : MonoBehaviour
             OnStageCleared?.Invoke();
     }
 
+    // 조각 파괴 후 점수 추가(한 번에 N*60)
+    public void AddScore(int amount)
+    {
+        if (amount <= 0) return;
+        Score += amount;
+        OnScoreChanged?.Invoke(Score);
+
+        if (_taggedPopupWorld.HasValue)
+        {
+            OnScorePopup?.Invoke(amount, _taggedPopupWorld.Value);
+            _taggedPopupWorld = null; // 한 번 소비
+        }
+    }
+
+    public void ShowScorePopup(int amount, Vector3 worldPos)
+    {
+        OnScorePopup?.Invoke(amount, worldPos);
+    }
 
 }
