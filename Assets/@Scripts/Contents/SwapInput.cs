@@ -25,15 +25,15 @@ public class SwapInput : MonoBehaviour
         if (!Managers.Game._isDragActive)
             return;
 
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && !isDragging)  // 드래그 시작은 isDragging이 false일 때만
         {
             StartDrag();
         }
-        else if (Input.GetMouseButton(0) && isDragging)
+        else if (Input.GetMouseButton(0) && isDragging)  // 드래그 중에는 업데이트 허용
         {
             UpdateDrag();
         }
-        else if (Input.GetMouseButtonUp(0) && isDragging)
+        else if (Input.GetMouseButtonUp(0) && isDragging)  // 드래그 끝도 isDragging이 true일 때만
         {
             EndDrag();
         }
@@ -41,7 +41,6 @@ public class SwapInput : MonoBehaviour
 
     void StartDrag()
     {
-        
         var cell = PickCell(Input.mousePosition);
         if (cell == null || !board.pieces.ContainsKey(cell.Value)) return;
 
@@ -109,6 +108,7 @@ public class SwapInput : MonoBehaviour
     {
         dragStartCell = null;
         isDragging = false;
+        // Managers.Game.EndPuzzleMovement(); // 이 줄 제거!
         // 드래그 연출 정리
     }
 
@@ -160,6 +160,9 @@ public class SwapInput : MonoBehaviour
         if (!Managers.Game._isDragActive)
             yield break;  // 드래그 비활성화 중이면 종료
 
+        // 스왑 시작하자마자 드래그 비활성화
+        Managers.Game.StartPuzzleMovement(); // 이게 _isDragActive = false 로 만듦
+
         // 연출: 위치 교환
         var A = board.pieces[a];
         var B = board.pieces[b];
@@ -178,18 +181,19 @@ public class SwapInput : MonoBehaviour
             yield return MoveSwap(A.transform, board.WorldCenter(a), B.transform, board.WorldCenter(b), 0.15f);
             board.pieces[a] = A;
             board.pieces[b] = B;
+
+            Managers.Game.EndPuzzleMovement(); // 롤백 끝나면 드래그 다시 활성화
+
             yield break;
         }
 
         // 해소 루프
         Managers.Game.ConsumeMove();
 
-
-        Managers.Game.StartPuzzleMovement();
-
+        // 매치 해소 중에도 드래그 비활성화 유지
         yield return loop.ResolveAllMatchesThenIdle();
 
-        Managers.Game.EndPuzzleMovement();
+        Managers.Game.EndPuzzleMovement(); // 모든 처리 끝나면 드래그 다시 활성화
     }
 
     IEnumerator MoveSwap(Transform A, Vector3 toA, Transform B, Vector3 toB, float dur)
@@ -197,8 +201,6 @@ public class SwapInput : MonoBehaviour
         float e = 0f;
         var a0 = A.position;
         var b0 = B.position;
-
-        Managers.Game.StartPuzzleMovement();
 
         while (e < dur)
         {
@@ -211,8 +213,5 @@ public class SwapInput : MonoBehaviour
 
         A.position = toA;
         B.position = toB;
-
-        Managers.Game.EndPuzzleMovement();
-
     }
 }
