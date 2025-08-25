@@ -101,12 +101,6 @@ public class TopFiller : MonoBehaviour
         List<Vector3> waypoints = new List<Vector3>();
         waypoints.Add(start);
 
-        // 스폰 지점에서 목표까지의 가상 경로를 헥사곤 그리드 방향으로 계산
-        Vector3Int spawnCell = new Vector3Int(3, 0, 0);
-        Vector3Int targetCell = _board.tilemap.WorldToCell(target);
-
-        Vector3 current = start;
-
         // 일단 아래로 떨어뜨리기
         Vector3 dropPoint = new Vector3(start.x, target.y + 1f, start.z);
         waypoints.Add(dropPoint);

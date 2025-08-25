@@ -3,8 +3,8 @@ using UnityEngine;
 public class SpinningTop : Puzzle
 {
     // 팽이는 매치 불참, 스왑 가능, (원하면) 중력 이동 허용/금지 선택
-    public override bool IsMatchable => false;        // ★ 매치 절대 불참
-    public override bool IsSwappable => true;         // ★ 일반 퍼즐처럼 스왑 가능
+    public override bool IsMatchable => false;        // 매치 절대 불참
+    public override bool IsSwappable => true;         // 일반 퍼즐처럼 스왑 가능
     public override bool AffectedByGravity => true;   // 가만히 두려면 false로 바꿔도 됨
 
     [Header("Top Rules")]

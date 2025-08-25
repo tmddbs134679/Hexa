@@ -1173,10 +1173,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f54f71f97bfc6a046b841595b84686bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cam: {fileID: 519420031}
-  board: {fileID: 586130700}
-  matcher: {fileID: 1052694032}
-  loop: {fileID: 2127971509}
+  _cam: {fileID: 519420031}
+  _board: {fileID: 586130700}
+  _matcher: {fileID: 1052694032}
+  _loop: {fileID: 2127971509}
   minDragDistance: 0.5
 --- !u!4 &897727027
 Transform:

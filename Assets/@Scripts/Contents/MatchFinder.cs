@@ -6,10 +6,6 @@ public class MatchFinder : MonoBehaviour
 {
     [SerializeField] private BoardState _board;
 
-    // ---------------------------
-    // Public API
-    // ---------------------------
-
     /// 보드 전체에서 라인(>=3) + 군집(>=4) 매치 수집
     public HashSet<Vector3Int> CollectAllMatches()
     {
@@ -28,10 +24,8 @@ public class MatchFinder : MonoBehaviour
         return all;
     }
 
-    // ---------------------------
-    // Line Matches (3축 직선)
-    // ---------------------------
 
+    // Line Matches (3축 직선)
     HashSet<Vector3Int> CollectAllLineMatches(List<Vector3Int> keys)
     {
         var result = new HashSet<Vector3Int>();
@@ -70,10 +64,8 @@ public class MatchFinder : MonoBehaviour
         return result;
     }
 
-    // ---------------------------
+  
     // Cluster Matches (마름모 포함 컴포넌트만)
-    // ---------------------------
-
     HashSet<Vector3Int> CollectAllClusterMatches(List<Vector3Int> keys)
     {
         var result = new HashSet<Vector3Int>();
@@ -98,7 +90,7 @@ public class MatchFinder : MonoBehaviour
         return result;
     }
 
-    // --- 군집 판정: 2×2 마름모(평행사변형) 포함 여부 ---
+    // 군집 판정: 2×2 마름모(평행사변형) 포함 여부 
     bool ContainsAnyRhombus(HashSet<Vector3Int> comp)
     {
         // comp 안의 각 셀 a에 대해, 인접한 두 방향(dirA, dirB) 조합으로
@@ -126,10 +118,8 @@ public class MatchFinder : MonoBehaviour
         return comp.Contains(b) && comp.Contains(c) && comp.Contains(d);
     }
 
-    // ---------------------------
+  
     // Flood Fill (같은 type + 매치 가능만)
-    // ---------------------------
-
     HashSet<Vector3Int> FloodFillSameType(Vector3Int start, int type, HashSet<Vector3Int> visited)
     {
         var comp = new HashSet<Vector3Int>();
@@ -158,10 +148,12 @@ public class MatchFinder : MonoBehaviour
         return comp;
     }
 
-    // === Helper: "매치 가능한 퍼즐"만 같은 타입으로 인정 ===
+    //  Helper: 매치 가능한 퍼즐"만 같은 타입으로 인정 
     bool IsSameTypeForMatch(Vector3Int c, int type)
     {
-        if (!_board.pieces.TryGetValue(c, out var go)) return false;
+        if (!_board.pieces.TryGetValue(c, out var go))
+            return false;
+
         var pz = go.GetComponent<Puzzle>();
         return pz != null && pz.IsMatchable && pz.typeId == type;
     }

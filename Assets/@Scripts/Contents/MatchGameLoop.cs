@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 
 /*
- 매치-3(헥사) 게임 루프를 코루틴으로 돌림: 초기 배치 → 매치 제거 → 낙하/보충 → 다시 매치… 를 **연쇄(cascade)**가 끝날 때까지 반복.
+ 매치-3(헥사) 게임 루프를 코루틴으로 돌림: 초기 배치 → 매치 제거 → 낙하/보충 → 다시 매치를 연쇄가 끝날 때까지 반복
  */
 public partial class  MatchGameLoop : MonoBehaviour
 {
@@ -49,7 +49,6 @@ public partial class  MatchGameLoop : MonoBehaviour
     
     public IEnumerator ResolveAllMatchesThenIdle()
     {
-
         while (true)
         {
             var matched = _matcher.CollectAllMatches();
@@ -65,9 +64,6 @@ public partial class  MatchGameLoop : MonoBehaviour
             int toSpawn = _board.EmptyCells().Count();
             yield return StartCoroutine(_gravity.ApplyWithSpawn(toSpawn));
         }
-
-  
-
     }
     
     IEnumerator DestroyMatchedPiecesWithAnimation(HashSet<Vector3Int> matchedCells)
@@ -146,7 +142,8 @@ public partial class  MatchGameLoop : MonoBehaviour
     
     void AnimatePieceDestroy(Transform transform, float delay)
     {
-        if (transform == null) return;
+        if (transform == null)
+            return;
         
         // 크기 확대 + 회전
         transform.DOScale(Vector3.one * destroyScaleMultiplier, destroyAnimDuration)
@@ -176,16 +173,16 @@ public partial class  MatchGameLoop : MonoBehaviour
     
     void CleanupPieces(List<Transform> transforms, HashSet<Vector3Int> cells)
     {
-        // 1) 이번에 사라지는 칸들을 "연결된 덩어리(군집/라인)"별로 나눔
+        // 1) 이번에 사라지는 칸들을 연결된 덩어리(군집/라인)별로 나눔
         var groups = SplitIntoGroups(cells);
 
         // 2) 그룹당 60점 + 팝업 1개(그룹의 중심 위치)
         foreach (var g in groups)
         {
             Vector3 center = GroupWorldCenter(g);
-            Managers.Game.ShowScorePopup(60, center); // ★ 팝업 1개
+            Managers.Game.ShowScorePopup(60, center); //  팝업 1개
         }
-        Managers.Game.AddScore(groups.Count * 60);     // ★ 점수: 그룹 수 × 60
+        Managers.Game.AddScore(groups.Count * 60);     // 점수: 그룹 수 × 60
 
         // DoTween 정리 및 오브젝트 파괴
         foreach (var transform in transforms)
@@ -208,7 +205,7 @@ public partial class  MatchGameLoop : MonoBehaviour
 }
 public partial class MatchGameLoop : MonoBehaviour
 {
-    // === 팽이 보조: 라운드 시작/스택 부여/파괴/클리어 체크 ===
+    // 팽이 보조: 라운드 시작/스택 부여/파괴/클리어 체크 
 
     void Tops_RoundReset()
     {
@@ -275,7 +272,7 @@ public partial class MatchGameLoop : MonoBehaviour
     bool Tops_AnyLeft()
         => _board.pieces.Values.Any(go => go.GetComponent<SpinningTop>() != null);
 
-    // === 외부에서 호출: "매치 조각 파괴 직후, 중력/보충 직전" ===
+    // 외부에서 호출: 매치 조각 파괴 직후, 중력/보충 직전
     public IEnumerator Tops_PostDestroyAndBeforeGravity(HashSet<Vector3Int> cleared)
     {
         Debug.Log($"[TOPS] ENTER cleared={cleared?.Count ?? -1}");   //  진입 로그
@@ -283,10 +280,6 @@ public partial class MatchGameLoop : MonoBehaviour
         Tops_RoundReset();
         Tops_ApplyStacks(cleared);
         yield return StartCoroutine(Tops_RemoveArmed());
-
-        // 모든 팽이 제거되면 스테이지 클리어
-        //if (!Tops_AnyLeft())
-        //    //OnStageCleared(); // 너의 기존 클리어 처리 호출
     }
 
     List<HashSet<Vector3Int>> SplitIntoGroups(HashSet<Vector3Int> cells)
@@ -296,7 +289,8 @@ public partial class MatchGameLoop : MonoBehaviour
 
         foreach (var start in cells)
         {
-            if (visited.Contains(start)) continue;
+            if (visited.Contains(start))
+                continue;
 
             var g = new HashSet<Vector3Int>();
             var q = new Queue<Vector3Int>();
@@ -325,7 +319,9 @@ public partial class MatchGameLoop : MonoBehaviour
     // 그룹의 월드 중심(평균) 좌표
     Vector3 GroupWorldCenter(HashSet<Vector3Int> group)
     {
-        if (group == null || group.Count == 0) return Vector3.zero;
+        if (group == null || group.Count == 0)
+            return Vector3.zero;
+
         Vector3 sum = Vector3.zero;
         int cnt = 0;
         foreach (var c in group)

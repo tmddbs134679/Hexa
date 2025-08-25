@@ -3,17 +3,17 @@ using System.Collections;
 
 public class SwapInput : MonoBehaviour
 {
-    public Camera cam;
-    public BoardState board;
-    public MatchFinder matcher;
-    public MatchGameLoop loop;
+    public Camera _cam;
+    public BoardState _board;
+    public MatchFinder _matcher;
+    public MatchGameLoop _loop;
 
     [Header("드래그 설정")]
     public float minDragDistance = 0.5f; // 최소 드래그 거리 (월드 단위)
 
     Vector3Int? dragStartCell;
     Vector3 dragStartWorldPos;
-    bool isDragging = false;
+    bool _isDragging = false;
 
     void Update()
     {
@@ -25,15 +25,15 @@ public class SwapInput : MonoBehaviour
         if (!Managers.Game._isDragActive)
             return;
 
-        if (Input.GetMouseButtonDown(0) && !isDragging)  // 드래그 시작은 isDragging이 false일 때만
+        if (Input.GetMouseButtonDown(0) && !_isDragging)  // 드래그 시작은 isDragging이 false일 때만
         {
             StartDrag();
         }
-        else if (Input.GetMouseButton(0) && isDragging)  // 드래그 중에는 업데이트 허용
+        else if (Input.GetMouseButton(0) && _isDragging)  // 드래그 중에는 업데이트 허용
         {
             UpdateDrag();
         }
-        else if (Input.GetMouseButtonUp(0) && isDragging)  // 드래그 끝도 isDragging이 true일 때만
+        else if (Input.GetMouseButtonUp(0) && _isDragging)  // 드래그 끝도 isDragging이 true일 때만
         {
             EndDrag();
         }
@@ -42,12 +42,12 @@ public class SwapInput : MonoBehaviour
     void StartDrag()
     {
         var cell = PickCell(Input.mousePosition);
-        if (cell == null || !board.pieces.ContainsKey(cell.Value)) return;
+        if (cell == null || !_board.pieces.ContainsKey(cell.Value)) return;
 
         dragStartCell = cell;
-        dragStartWorldPos = cam.ScreenToWorldPoint(Input.mousePosition);
+        dragStartWorldPos = _cam.ScreenToWorldPoint(Input.mousePosition);
         dragStartWorldPos.z = 0f;
-        isDragging = true;
+        _isDragging = true;
 
         // 드래그 시작 연출 (선택 표시 등)
         //Debug.Log($"드래그 시작: {dragStartCell}");
@@ -56,7 +56,7 @@ public class SwapInput : MonoBehaviour
     void UpdateDrag()
     {
         // 드래그 중 시각적 피드백 (선택적)
-        var currentWorldPos = cam.ScreenToWorldPoint(Input.mousePosition);
+        var currentWorldPos = _cam.ScreenToWorldPoint(Input.mousePosition);
         currentWorldPos.z = 0f;
 
         float dragDistance = Vector3.Distance(dragStartWorldPos, currentWorldPos);
@@ -70,11 +70,11 @@ public class SwapInput : MonoBehaviour
     {
         if (dragStartCell == null)
         {
-            isDragging = false;
+            _isDragging = false;
             return;
         }
 
-        var currentWorldPos = cam.ScreenToWorldPoint(Input.mousePosition);
+        var currentWorldPos = _cam.ScreenToWorldPoint(Input.mousePosition);
         currentWorldPos.z = 0f;
 
         float dragDistance = Vector3.Distance(dragStartWorldPos, currentWorldPos);
@@ -91,7 +91,7 @@ public class SwapInput : MonoBehaviour
         Vector3 dragDirection = (currentWorldPos - dragStartWorldPos).normalized;
         Vector3Int? targetCell = FindClosestNeighborInDirection(dragStartCell.Value, dragDirection);
 
-        if (targetCell != null && board.pieces.ContainsKey(targetCell.Value))
+        if (targetCell != null && _board.pieces.ContainsKey(targetCell.Value))
         {
             Debug.Log($"드래그 완료: {dragStartCell} -> {targetCell}");
             StartCoroutine(TrySwapAndResolve(dragStartCell.Value, targetCell.Value));
@@ -107,9 +107,7 @@ public class SwapInput : MonoBehaviour
     void ResetDrag()
     {
         dragStartCell = null;
-        isDragging = false;
-        // Managers.Game.EndPuzzleMovement(); // 이 줄 제거!
-        // 드래그 연출 정리
+        _isDragging = false;
     }
 
     Vector3Int? FindClosestNeighborInDirection(Vector3Int startCell, Vector3 direction)
@@ -122,10 +120,12 @@ public class SwapInput : MonoBehaviour
         for (int i = 0; i < 6; i++)
         {
             Vector3Int neighbor = PuzzleDirs.Step(startCell, i);
-            if (!board.IsValidCell(neighbor)) continue;
 
-            Vector3 neighborWorldPos = board.WorldCenter(neighbor);
-            Vector3 startWorldPos = board.WorldCenter(startCell);
+            if (!_board.IsValidCell(neighbor))
+                continue;
+
+            Vector3 neighborWorldPos = _board.WorldCenter(neighbor);
+            Vector3 startWorldPos = _board.WorldCenter(startCell);
             Vector3 neighborDirection = (neighborWorldPos - startWorldPos).normalized;
 
             float dot = Vector3.Dot(direction, neighborDirection);
@@ -148,10 +148,13 @@ public class SwapInput : MonoBehaviour
 
     Vector3Int? PickCell(Vector3 screenPos)
     {
-        var world = cam.ScreenToWorldPoint(screenPos);
+        var world = _cam.ScreenToWorldPoint(screenPos);
         world.z = 0f;
-        var cell = board.tilemap.WorldToCell(world);
-        if (!board.IsValidCell(cell)) return null;
+        var cell = _board.tilemap.WorldToCell(world);
+
+        if (!_board.IsValidCell(cell))
+            return null;
+
         return cell;
     }
 
@@ -161,26 +164,26 @@ public class SwapInput : MonoBehaviour
             yield break;  // 드래그 비활성화 중이면 종료
 
         // 스왑 시작하자마자 드래그 비활성화
-        Managers.Game.StartPuzzleMovement(); // 이게 _isDragActive = false 로 만듦
+        Managers.Game.StartPuzzleMovement();
 
         // 연출: 위치 교환
-        var A = board.pieces[a];
-        var B = board.pieces[b];
-        yield return MoveSwap(A.transform, board.WorldCenter(b), B.transform, board.WorldCenter(a), 0.15f);
+        var A = _board.pieces[a];
+        var B = _board.pieces[b];
+        yield return MoveSwap(A.transform, _board.WorldCenter(b), B.transform, _board.WorldCenter(a), 0.15f);
 
         // 상태 스왑
-        board.pieces[a] = B;
-        board.pieces[b] = A;
-        yield return new WaitForSeconds(0.3f);
+        _board.pieces[a] = B;
+        _board.pieces[b] = A;
+        yield return new WaitForSeconds(0.3f);      //캐싱할려면 캐싱
 
         // 매치 확인
-        var matched = matcher.CollectAllMatches();
+        var matched = _matcher.CollectAllMatches();
         if (matched.Count == 0)
         {
             // 롤백
-            yield return MoveSwap(A.transform, board.WorldCenter(a), B.transform, board.WorldCenter(b), 0.15f);
-            board.pieces[a] = A;
-            board.pieces[b] = B;
+            yield return MoveSwap(A.transform, _board.WorldCenter(a), B.transform, _board.WorldCenter(b), 0.15f);
+            _board.pieces[a] = A;
+            _board.pieces[b] = B;
 
             Managers.Game.EndPuzzleMovement(); // 롤백 끝나면 드래그 다시 활성화
 
@@ -191,7 +194,7 @@ public class SwapInput : MonoBehaviour
         Managers.Game.ConsumeMove();
 
         // 매치 해소 중에도 드래그 비활성화 유지
-        yield return loop.ResolveAllMatchesThenIdle();
+        yield return _loop.ResolveAllMatchesThenIdle();
 
         Managers.Game.EndPuzzleMovement(); // 모든 처리 끝나면 드래그 다시 활성화
     }
