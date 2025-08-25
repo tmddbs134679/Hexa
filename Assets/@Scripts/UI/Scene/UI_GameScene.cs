@@ -17,7 +17,7 @@ public class UI_GameScene : UI_Scene
 
     enum Buttons
     {
-
+        PauseButton
     }
 
     enum Texts
@@ -30,6 +30,7 @@ public class UI_GameScene : UI_Scene
     public Canvas mainCanvas;                 // 인스펙터에서 연결(Overlay면 WorldCamera 비워도 됨)
     public GameObject scoreFloaterPrefab;
     [SerializeField] private UI_ClearPopup _clearPopup;
+    [SerializeField] private UI_PausePopup _PausePopup;
     public override bool Init()
     {
         if (base.Init() == false)
@@ -44,11 +45,17 @@ public class UI_GameScene : UI_Scene
         #endregion
 
         _clearPopup.gameObject.SetActive(false);
+        _PausePopup.gameObject.SetActive(false);
+        Refresh();
 
+        GetButton((int)Buttons.PauseButton).gameObject.BindEvent(OnClickPauseButton);
         return true;
     }
 
- 
+    private void OnClickPauseButton()
+    {
+        _PausePopup.gameObject.SetActive(true);
+    }
 
     private void Awake()
     {
@@ -57,7 +64,7 @@ public class UI_GameScene : UI_Scene
 
     private void Start()
     {
-        Refresh();
+    
     }
     void OnEnable()
     {
@@ -80,7 +87,7 @@ public class UI_GameScene : UI_Scene
     private void Refresh()
     {
         GetText((int)Texts.ObstacleText).text = Managers.Game.TopGoal.ToString();
-        GetText((int)Texts.MoveCountText).text = Managers.Game.MovesLeft.ToString();
+        //GetText((int)Texts.MoveCountText).text = Managers.Game.MovesLeft.ToString();
     }
 
     void HandleMovesChanged(int left)
@@ -112,6 +119,12 @@ public class UI_GameScene : UI_Scene
     {
         // TODO: 클리어 팝업/연출
 
+        StartCoroutine(OpenClearPopupNextFrame());
+    }
+
+    IEnumerator OpenClearPopupNextFrame()
+    {
+        yield return null; // 한 프레임 양보 → 점수 텍스트 포함 모든 UI 업데이트 완료
         _clearPopup.gameObject.SetActive(true);
     }
 
