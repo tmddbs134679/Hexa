@@ -175,6 +175,7 @@ public class SwapInput : MonoBehaviour
         }
 
         // 해소 루프
+        Managers.Game.ConsumeMove();
         yield return loop.ResolveAllMatchesThenIdle();
     }
 

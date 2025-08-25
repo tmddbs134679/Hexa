@@ -33,8 +33,10 @@ public partial class  MatchGameLoop : MonoBehaviour
     {
         // 시작하자마자 30칸 전부 꽉 채운 상태로 세팅
         yield return StartCoroutine(gravity.FillInitialBoard(30, 5));
-        //StartCoroutine(ResolveAllMatchesThenIdle());
-        // 필요하면 초반부터 매치 제거 루프 돌리고 싶을 때만 아래 한 줄 유지
+
+        //  추가: 이번 레벨 목표/이동수 초기화(예: 이동 15, 팽이 5개)
+        Managers.Game.BeginLevel(startMoves: 15, topGoal: 5);
+
         yield return ResolveAllMatchesThenIdle();
         yield break;
     }
@@ -230,6 +232,10 @@ public partial class MatchGameLoop : MonoBehaviour
             board.pieces.Remove(cell);
             Destroy(go);
         }
+
+        if (dead.Count > 0)
+            Managers.Game.AddTopDestroyed(dead.Count);
+
     }
 
     bool Tops_AnyLeft()

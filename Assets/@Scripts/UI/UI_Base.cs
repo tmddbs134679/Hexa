@@ -116,6 +116,7 @@ public class UI_Base : MonoBehaviour
         contentObject.transform.DOScale(1f, 0.1f).SetEase(Ease.InOutBack).SetUpdate(true);
     }
 
+
     public void PopupFadeInAnimation(GameObject contentObject)
     {
 

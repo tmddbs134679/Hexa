@@ -27,7 +27,7 @@ public class GravityWithSlide : MonoBehaviour
     private int slideParity = 0;
 
     [Header("Initial Tops")]
-    public int initialTopCount = 5; // ★ 기본 5개
+    public int initialTopCount = 5; // 기본 5개
 
     // ─────────────────────────────────────────────────────────────
     // 칸 길이 기반 duration 계산 (입구 연출 속도 통일용)
