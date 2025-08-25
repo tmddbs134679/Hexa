@@ -31,6 +31,7 @@ public class UI_GameScene : UI_Scene
     public GameObject scoreFloaterPrefab;
     [SerializeField] private UI_ClearPopup _clearPopup;
     [SerializeField] private UI_PausePopup _PausePopup;
+    [SerializeField] private UI_GameOverPopup _gameOverPopup;
     public override bool Init()
     {
         if (base.Init() == false)
@@ -95,6 +96,9 @@ public class UI_GameScene : UI_Scene
 
         if (t != null)
             t.text = left.ToString();
+
+        if (left <= 0)
+            _gameOverPopup.gameObject.SetActive(true);
     }
 
     void HandleObstacleChanged(int destroyed, int goal)
@@ -108,8 +112,6 @@ public class UI_GameScene : UI_Scene
                 t.text = "V";
             else
                 t.text = count.ToString();
-
-
         }
             
     }

@@ -90,7 +90,10 @@ public class GameManager : MonoBehaviour
     // 성공한 스왑 1회당 호출
     public void ConsumeMove()
     {
-        if (MovesLeft <= 0) return;
+        if (MovesLeft <= 0)
+            return;
+
+
         MovesLeft--;
         OnMovesChanged?.Invoke(MovesLeft);
     }

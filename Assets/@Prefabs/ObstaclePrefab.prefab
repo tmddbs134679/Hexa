@@ -97,8 +97,6 @@ MonoBehaviour:
   stack: 0
   armedToBreak: 0
   animator: {fileID: 4292196757791469329}
-  trigStack1: Stack1
-  trigBreak: Break
 --- !u!1 &5361888532399407614
 GameObject:
   m_ObjectHideFlags: 0
@@ -173,7 +171,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 2
-  m_Sprite: {fileID: 21300000, guid: 59b5f2136fc75664898cb4d4a060e25f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: c3f7b19014323ba4dbbf79722b9fa2f0, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

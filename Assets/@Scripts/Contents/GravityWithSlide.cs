@@ -7,39 +7,37 @@ using DG.Tweening;
 
 public class GravityWithSlide : MonoBehaviour
 {
-    public BoardState board;
-    public TopFiller filler;
+    public BoardState _board;
+    public TopFiller _filler;
 
     [Header("Anim")]
     public float moveDurPerCell = 0.07f;   // 셀 1칸 이동 시간
     public float staggerDelay = 0.02f;     // 여러 조각 이동 시 계단식 지연
 
-    // ★ 추가: 입구로 내려오는 구간도 칸당 속도와 동일하게 맞출지
-    public bool unifyEntrySpeedWithPerCell = true;
+    // 입구로 내려오는 구간도 칸당 속도와 동일하게 맞출지
+    public bool _IsEntrySpeedWithPerCell = true;
 
-    // ★ 선택: 위 옵션을 끄면 이 고정값을 사용
-    public float entryMoveDuration = 0.12f;
+    //  위 옵션을 끄면 이 고정값을 사용
+    public float _entryMoveDuration = 0.12f;
 
     [Header("Hex Gravity Settings")]
-    public float verticalThreshold = 0.3f; // "같은 열"로 취급할 x 허용치
+    public float _verticalThreshold = 0.3f; // "같은 열"로 취급할 x 허용치
 
     // 좌/우 동률일 때 번갈아 선택하기 위한 상태
-    private int slideParity = 0;
+    private int _slideParity = 0;
 
     [Header("Initial Tops")]
     public int initialTopCount = 5; // 기본 5개
 
-    // ─────────────────────────────────────────────────────────────
     // 칸 길이 기반 duration 계산 (입구 연출 속도 통일용)
-    // ─────────────────────────────────────────────────────────────
     private float _cellStepLength = -1f;
 
     // ===========================================
-    // ★ 착지 이펙트 옵션/상태
+    //  착지 이펙트 옵션/상태
     // ===========================================
-    [Header("Landing FX")]
-    public bool useLandingFX = true;
-    public bool landingFXOnInitialFill = true;
+    [Header("Landing Anim")]
+    public bool _IsuseLandingAnim = true;
+    public bool _IslandingAnimOnInitialFill = true;
 
     // 타이밍
     [Range(0.08f, 0.7f)] public float landTotalDuration = 0.32f; // 전체 모션 시간
@@ -54,13 +52,15 @@ public class GravityWithSlide : MonoBehaviour
 
     private bool _isInitialFillPhase = false;
 
-    // ===========================================
-    // ★ 착지 이펙트 본체
-    // ===========================================
-    void PlayLandingFX(Transform tr)
+    // 착지 이펙트 본체
+
+    void PlayLandingAnimation(Transform tr)
     {
-        if (!useLandingFX || tr == null) return;
-        if (_isInitialFillPhase && !landingFXOnInitialFill) return;
+        if (!_IsuseLandingAnim || tr == null)
+            return;
+
+        if (_isInitialFillPhase && !_IslandingAnimOnInitialFill)
+            return;
 
         tr.DOKill(false);
 
@@ -118,16 +118,17 @@ public class GravityWithSlide : MonoBehaviour
     // (3,0) 기준으로 "가장 아래" 이웃 한 칸의 월드 길이를 측정해서 캐시
     float GetCellStepLength()
     {
-        if (_cellStepLength > 0f) return _cellStepLength;
+        if (_cellStepLength > 0f)
+            return _cellStepLength;
 
         Vector3Int baseCell = new Vector3Int(3, 0, 0);
-        if (!board.IsValidCell(baseCell))
+        if (!_board.IsValidCell(baseCell))
         {
             _cellStepLength = 1f; // fallback
             return _cellStepLength;
         }
 
-        Vector3 baseW = board.WorldCenter(baseCell);
+        Vector3 baseW = _board.WorldCenter(baseCell);
         float bestDy = 0f;      // 가장 음수(더 아래)인 y차
         float bestDist = -1f;
 
@@ -135,9 +136,9 @@ public class GravityWithSlide : MonoBehaviour
         for (int i = 0; i < 6; i++)
         {
             var n = PuzzleDirs.Step(baseCell, i);
-            if (!board.IsValidCell(n)) continue;
+            if (!_board.IsValidCell(n)) continue;
 
-            Vector3 nw = board.WorldCenter(n);
+            Vector3 nw = _board.WorldCenter(n);
             float dy = nw.y - baseW.y;
             float dist = Vector3.Distance(baseW, nw);
 
@@ -158,9 +159,12 @@ public class GravityWithSlide : MonoBehaviour
         for (int i = 0; i < 6; i++)
         {
             var n = PuzzleDirs.Step(baseCell, i);
-            if (!board.IsValidCell(n)) continue;
 
-            float dist = Vector3.Distance(baseW, board.WorldCenter(n));
+            if (!_board.IsValidCell(n))
+                continue;
+
+            float dist = Vector3.Distance(baseW, _board.WorldCenter(n));
+
             if (dist > 0f)
             {
                 _cellStepLength = dist;
@@ -186,7 +190,7 @@ public class GravityWithSlide : MonoBehaviour
     // 처음 채우기: (3,0) 입구로 넣고 → Collapse로 "한 칸씩" 흘러내리기
     public IEnumerator FillInitialBoard(int totalPieces, int topCountOverride = -1)
     {
-        _isInitialFillPhase = true; // ★ 초기 스폰 구간 시작
+        _isInitialFillPhase = true; //  초기 스폰 구간 시작
 
         int want = (topCountOverride >= 0) ? topCountOverride : initialTopCount;
         want = Mathf.Clamp(want, 0, totalPieces);
@@ -202,7 +206,7 @@ public class GravityWithSlide : MonoBehaviour
             yield return CollapseAnimated();          // 실제 낙하
         }
 
-        _isInitialFillPhase = false; // ★ 초기 스폰 구간 종료
+        _isInitialFillPhase = false; //  초기 스폰 구간 종료
     }
 
     // 매치 후 스폰도 동일한 규칙
@@ -213,7 +217,7 @@ public class GravityWithSlide : MonoBehaviour
 
         for (int i = 0; i < spawnCount; i++)
         {
-            // 🔁 매번 입구 비움 → 1개 스폰 → 다시 낙하
+            //  매번 입구 비움 → 1개 스폰 → 다시 낙하
             yield return SpawnFromTopEntry();   // 입구(3,0) 최상단 빈칸에 등록 + 짧은 이동
             yield return CollapseAnimated();    // 한 칸씩 흘러내리며 자리 비워짐
         }
@@ -223,55 +227,58 @@ public class GravityWithSlide : MonoBehaviour
     {
         Vector3Int baseCell = new Vector3Int(3, 0, 0);
         Vector3Int entry = FindTopEntryAbove(baseCell);
-        if (!board.IsValidCell(entry) || !board.IsEmpty(entry)) yield break;
+        if (!_board.IsValidCell(entry) || !_board.IsEmpty(entry))
+            yield break;
 
         GameObject go;
-        if (spawnTop && filler.topPrefab != null)
+        if (spawnTop && _filler._topPrefab != null)
         {
-            go = Instantiate(filler.topPrefab);
+            go = Instantiate(_filler._topPrefab);
             var top = go.GetComponent<SpinningTop>();
-            if (top != null && filler.topSprite != null)
+            if (top != null && _filler._topSprite != null)
             {
-                if (top.sr == null) top.sr = go.GetComponent<SpriteRenderer>();
-                top.sr.sprite = filler.topSprite;
+                if (top.sr == null)
+                    top.sr = go.GetComponent<SpriteRenderer>();
+                top.sr.sprite = _filler._topSprite;
             }
         }
         else
         {
-            int type = Random.Range(0, Mathf.Min(filler.colorCount, filler.typeSprites.Length));
-            go = Instantiate(filler.piecePrefab);
+            int type = Random.Range(0, Mathf.Min(_filler.colorCount, _filler._typeSprites.Length));
+            go = Instantiate(_filler._piecePrefab);
             var pz = go.GetComponent<Puzzle>();
-            pz.SetType(type, filler.typeSprites[type]);
+            pz.SetType(type, _filler._typeSprites[type]);
         }
 
         // 화면 위에서 등장 → 입구셀 등록
-        Vector3 from = board.WorldCenter(baseCell) + Vector3.up * filler.spawnHeightOffset;
+        Vector3 from = _board.WorldCenter(baseCell) + Vector3.up * _filler.spawnHeightOffset;
         go.transform.position = from;
 
-        board.pieces[entry] = go;
+        _board.pieces[entry] = go;
 
-        Vector3 entryPos = board.WorldCenter(entry);
-        float dur = unifyEntrySpeedWithPerCell ? DurationByPerCell(from, entryPos) : entryMoveDuration;
+        Vector3 entryPos = _board.WorldCenter(entry);
+        float dur = _IsEntrySpeedWithPerCell ? DurationByPerCell(from, entryPos) : _entryMoveDuration;
         yield return MoveTo(go.transform, entryPos, dur);
 
        // 스폰 직후 그 칸이 '이미 최종 자리'면, 여기서 바로 착지 FX 발동
         bool stableAtEntry = !HasDownwardEmpty(entry);
         if (stableAtEntry)
-            PlayLandingFX(go.transform);
+            PlayLandingAnimation(go.transform);
     }
 
 
     // (3,0)과 같은 '입구 열'의 최상단 빈칸 찾기
     private Vector3Int FindTopEntryAbove(Vector3Int entryBase)
     {
-        float ex = board.WorldCenter(entryBase).x;
+        float ex = _board.WorldCenter(entryBase).x;
 
-        var column = board.AllCells()
-            .Where(c => Mathf.Abs(board.WorldCenter(c).x - ex) < verticalThreshold)
-            .OrderByDescending(c => board.WorldCenter(c).y);
+        var column = _board.AllCells()
+            .Where(c => Mathf.Abs(_board.WorldCenter(c).x - ex) < _verticalThreshold)
+            .OrderByDescending(c => _board.WorldCenter(c).y);
 
         foreach (var c in column)
-            if (board.IsEmpty(c)) return c;
+            if (_board.IsEmpty(c))
+                return c;
 
         // 못 찾으면 기본값 반환(호출부에서 비었는지 한 번 더 검사)
         return entryBase;
@@ -282,14 +289,17 @@ public class GravityWithSlide : MonoBehaviour
     // 아래로 더 낮은 빈칸이 있으면 "불안정" (= 계속 내려가야 함)
     private bool HasDownwardEmpty(Vector3Int cell)
     {
-        var cw = board.WorldCenter(cell);
+        var cw = _board.WorldCenter(cell);
         for (int i = 0; i < 6; i++)
         {
             var n = PuzzleDirs.Step(cell, i);
-            if (!board.IsValidCell(n) || !board.IsEmpty(n)) continue;
+            if (!_board.IsValidCell(n) || !_board.IsEmpty(n))
+                continue;
 
-            var nw = board.WorldCenter(n);
-            if (nw.y < cw.y - 0.01f) return true; // 더 낮은 방향만
+            var nw = _board.WorldCenter(n);
+
+            if (nw.y < cw.y - 0.01f)
+                return true; // 더 낮은 방향만
         }
         return false;
     }
@@ -300,7 +310,7 @@ public class GravityWithSlide : MonoBehaviour
     // - 동률이면 좌/우 번갈이
     private Vector3Int FindNextFallStep(Vector3Int from)
     {
-        var fw = board.WorldCenter(from);
+        var fw = _board.WorldCenter(from);
 
         float bestScore = float.PositiveInfinity;
         var bests = new List<Vector3Int>();
@@ -308,14 +318,16 @@ public class GravityWithSlide : MonoBehaviour
         for (int i = 0; i < 6; i++)
         {
             var n = PuzzleDirs.Step(from, i);
-            if (!board.IsValidCell(n) || !board.IsEmpty(n)) continue;
+            if (!_board.IsValidCell(n) || !_board.IsEmpty(n))
+                continue;
 
-            var nw = board.WorldCenter(n);
+            var nw = _board.WorldCenter(n);
             float dy = fw.y - nw.y;               // 아래쪽만 허용
-            if (dy <= 0.01f) continue;
+            if (dy <= 0.01f)
+                continue;
 
             float dx = Mathf.Abs(fw.x - nw.x);    // 수직에 가까울수록 우선
-            float verticalBonus = (dx < verticalThreshold) ? -50f : 0f;
+            float verticalBonus = (dx < _verticalThreshold) ? -50f : 0f;
 
             // 더 낮을수록(= y가 작을수록), 더 수직일수록 점수 ↓
             float score = nw.y * 100f + dx * 10f + verticalBonus;
@@ -333,18 +345,19 @@ public class GravityWithSlide : MonoBehaviour
             }
         }
 
-        if (bests.Count == 0) return from; // 더 내려갈 곳 없음 → 제자리
+        if (bests.Count == 0)
+            return from; // 더 내려갈 곳 없음 → 제자리
 
         if (bests.Count > 1)
         {
             // 동률이면 좌/우 번갈이: x가 작은 쪽(왼) ↔ x가 큰 쪽(오)
-            bool pickLeft = (slideParity & 1) == 0;
-            slideParity ^= 1;
+            bool pickLeft = (_slideParity & 1) == 0;
+            _slideParity ^= 1;
 
             bests.Sort((a, b) =>
             {
-                float ax = board.WorldCenter(a).x;
-                float bx = board.WorldCenter(b).x;
+                float ax = _board.WorldCenter(a).x;
+                float bx = _board.WorldCenter(b).x;
                 return ax.CompareTo(bx);
             });
             return pickLeft ? bests.First() : bests.Last();
@@ -364,9 +377,9 @@ public class GravityWithSlide : MonoBehaviour
             moved = false;
             safety++;
 
-            var unstable = board.pieces
+            var unstable = _board.pieces
                 .Where(kv => HasDownwardEmpty(kv.Key))
-                .OrderBy(kv => board.WorldCenter(kv.Key).y) // 아래부터
+                .OrderBy(kv => _board.WorldCenter(kv.Key).y) // 아래부터
                 .ToList();
 
             var tasks = new List<Coroutine>();
@@ -377,23 +390,25 @@ public class GravityWithSlide : MonoBehaviour
                 var from = kv.Key;
                 var go = kv.Value;
 
-                if (!board.pieces.ContainsKey(from)) continue;
+                if (!_board.pieces.ContainsKey(from))
+                    continue;
 
                 var to = FindNextFallStep(from);
-                if (to == from) continue;
+                if (to == from)
+                    continue;
 
                 moved = true;
 
                 // 보드 즉시 갱신(동시에 겹치지 않게)
-                board.pieces.Remove(from);
-                board.pieces[to] = go;
+                _board.pieces.Remove(from);
+                _board.pieces[to] = go;
 
                 // ★ 이 이동이 "마지막"인지 즉시 판정
                 bool isFinalAfterThisStep = !HasDownwardEmpty(to);
 
                 float delay = i * staggerDelay; // 계단식 딜레이
                 tasks.Add(StartCoroutine(
-                    MoveWithDelay(go.transform, board.WorldCenter(to), delay, isFinalAfterThisStep)
+                    MoveWithDelay(go.transform, _board.WorldCenter(to), delay, isFinalAfterThisStep)
                 ));
                 i++;
             }
@@ -407,16 +422,13 @@ public class GravityWithSlide : MonoBehaviour
 
     // ====== 이동 유틸 ======
 
-    private IEnumerator MoveWithDelay(Transform tr, Vector3 target, float delay)
-    {
-        if (delay > 0f) yield return new WaitForSeconds(delay);
-        yield return MoveTo(tr, target, moveDurPerCell); // 셀 1칸 기준 시간
-    }
     private IEnumerator MoveWithDelay(Transform tr, Vector3 target, float delay, bool landingFx)
     {
         if (delay > 0f) yield return new WaitForSeconds(delay);
         yield return MoveTo(tr, target, moveDurPerCell);
-        if (landingFx) PlayLandingFX(tr); // ★ 도착 즉시 개별 실행
+
+        if (landingFx)
+            PlayLandingAnimation(tr); //  도착 즉시 개별 실행
     }
 
     private IEnumerator MoveTo(Transform tr, Vector3 to, float dur)

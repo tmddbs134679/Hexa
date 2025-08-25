@@ -10,10 +10,10 @@ using DG.Tweening;
 public partial class  MatchGameLoop : MonoBehaviour
 {
     [Header("Refs")]
-    public BoardState board;
-    public TopFiller filler;
-    public GravityWithSlide gravity;
-    public MatchFinder matcher;
+    public BoardState _board;
+    public TopFiller _filler;
+    public GravityWithSlide _gravity;
+    public MatchFinder _matcher;
     
     [Header("Init")]
     public int initialCount = 1;
@@ -33,11 +33,11 @@ public partial class  MatchGameLoop : MonoBehaviour
     {
         Managers.Game.StartPuzzleMovement();
         // 시작하자마자 30칸 전부 꽉 채운 상태로 세팅
-        yield return StartCoroutine(gravity.FillInitialBoard(30, 5));
+        yield return StartCoroutine(_gravity.FillInitialBoard(30, 5));
 
         Managers.Game.EndPuzzleMovement();
 
-        //  추가: 이번 레벨 목표/이동수 초기화(예: 이동 15, 팽이 5개)
+        //  추가: 이번 레벨 목표/이동수 초기화
         Managers.Game.BeginLevel(startMoves: 15, topGoal: 5);
 
         Managers.Game.StartPuzzleMovement();
@@ -52,7 +52,7 @@ public partial class  MatchGameLoop : MonoBehaviour
 
         while (true)
         {
-            var matched = matcher.CollectAllMatches();
+            var matched = _matcher.CollectAllMatches();
             if (matched.Count == 0) 
                 yield break;
                 
@@ -62,8 +62,8 @@ public partial class  MatchGameLoop : MonoBehaviour
             yield return StartCoroutine(Tops_PostDestroyAndBeforeGravity(matched));
 
             // 제거 개수만큼 즉시 스폰 + 낙하 동시 처리
-            int toSpawn = board.EmptyCells().Count();
-            yield return StartCoroutine(gravity.ApplyWithSpawn(toSpawn));
+            int toSpawn = _board.EmptyCells().Count();
+            yield return StartCoroutine(_gravity.ApplyWithSpawn(toSpawn));
         }
 
   
@@ -77,7 +77,7 @@ public partial class  MatchGameLoop : MonoBehaviour
         // 매치된 조각들의 Transform 수집
         foreach (var cell in matchedCells)
         {
-            if (board.pieces.TryGetValue(cell, out var go) && go != null)
+            if (_board.pieces.TryGetValue(cell, out var go) && go != null)
             {
                 matchedTransforms.Add(go.transform);
             }
@@ -88,7 +88,7 @@ public partial class  MatchGameLoop : MonoBehaviour
             // Transform이 없으면 그냥 보드에서만 제거
             foreach (var cell in matchedCells)
             {
-                board.pieces.Remove(cell);
+                _board.pieces.Remove(cell);
             }
             yield break;
         }
@@ -200,7 +200,7 @@ public partial class  MatchGameLoop : MonoBehaviour
         // 보드에서 제거
         foreach (var cell in cells)
         {
-            board.pieces.Remove(cell);
+            _board.pieces.Remove(cell);
         }
     }
 
@@ -212,7 +212,7 @@ public partial class MatchGameLoop : MonoBehaviour
 
     void Tops_RoundReset()
     {
-        foreach (var go in board.pieces.Values)
+        foreach (var go in _board.pieces.Values)
         {
             var top = go.GetComponent<SpinningTop>();
             if (top) top.RoundReset();
@@ -227,8 +227,8 @@ public partial class MatchGameLoop : MonoBehaviour
             for (int d = 0; d < 6; d++)
             {
                 var n = PuzzleDirs.Step(cell, d);
-                if (!board.IsValidCell(n)) continue;
-                if (!board.pieces.TryGetValue(n, out var go)) continue;
+                if (!_board.IsValidCell(n)) continue;
+                if (!_board.pieces.TryGetValue(n, out var go)) continue;
 
                 var top = go.GetComponent<SpinningTop>();
                 if (top != null && touched.Add(go))
@@ -241,7 +241,7 @@ public partial class MatchGameLoop : MonoBehaviour
     {
         yield return new WaitForSeconds(waitForAnim);
 
-        var dead = board.pieces
+        var dead = _board.pieces
             .Where(kv => kv.Value.GetComponent<SpinningTop>()?.armedToBreak == true)
             .Select(kv => kv.Key)
             .ToList();
@@ -251,7 +251,7 @@ public partial class MatchGameLoop : MonoBehaviour
             //  1) 팽이 위치마다 +500 팝업
             foreach (var cell in dead)
             {
-                Vector3 pos = board.WorldCenter(cell);
+                Vector3 pos = _board.WorldCenter(cell);
                 Managers.Game.ShowScorePopup(Define.POINT_SCORE_TOP, pos);
             }
 
@@ -262,8 +262,8 @@ public partial class MatchGameLoop : MonoBehaviour
         // 실제 제거
         foreach (var cell in dead)
         {
-            var go = board.pieces[cell];
-            board.pieces.Remove(cell);
+            var go = _board.pieces[cell];
+            _board.pieces.Remove(cell);
             Destroy(go);
         }
 
@@ -273,7 +273,7 @@ public partial class MatchGameLoop : MonoBehaviour
     }
 
     bool Tops_AnyLeft()
-        => board.pieces.Values.Any(go => go.GetComponent<SpinningTop>() != null);
+        => _board.pieces.Values.Any(go => go.GetComponent<SpinningTop>() != null);
 
     // === 외부에서 호출: "매치 조각 파괴 직후, 중력/보충 직전" ===
     public IEnumerator Tops_PostDestroyAndBeforeGravity(HashSet<Vector3Int> cleared)
@@ -330,7 +330,7 @@ public partial class MatchGameLoop : MonoBehaviour
         int cnt = 0;
         foreach (var c in group)
         {
-            sum += board.WorldCenter(c);
+            sum += _board.WorldCenter(c);
             cnt++;
         }
         return sum / Mathf.Max(1, cnt);

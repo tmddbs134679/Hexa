@@ -11,31 +11,30 @@ using System.Linq;
  */
 public class TopFiller : MonoBehaviour
 {
-    public BoardState board;
+    public BoardState _board;
     [Header("Spawn")]
-    public GameObject piecePrefab;
-    public Sprite[] typeSprites;        // 색 스프라이트(0~N-1)
+    public GameObject _piecePrefab;
+    public Sprite[] _typeSprites;        // 색 스프라이트(0~N-1)
     public int colorCount = 6;          // 사용 색 개수(장애물/특수 제외)
 
 
     [Header("Top (Obstacle)")]
-    public GameObject topPrefab;   // ★ 팽이 프리팹 슬롯
-    public Sprite topSprite;       // (선택) 전용 스프라이트가 있으면 연결
+    public GameObject _topPrefab;   //  팽이 프리팹 슬롯
+    public Sprite _topSprite;       // 전용 스프라이트가 있으면 연결
 
     [Header("Spawn Position")]
     public float spawnHeightOffset = 2.0f; // (3,0) 위쪽으로 얼마나 올릴지
 
     [Header("Flowing Animation")]
-    public bool useFlowingAnimation = true;     // 흘러내리는 애니메이션 사용 여부
-    public float flowStepDuration = 0.08f;      // 각 단계별 이동 시간
-    public int maxFlowSteps = 8;               // 최대 흘러내리기 단계 수
+    public bool _IsuseFlowingAnimation = true;     // 흘러내리는 애니메이션 사용 여부
+    public float _flowStepDuration = 0.08f;      // 각 단계별 이동 시간
 
     // 초기 채우기 등에 사용
     public IEnumerator SpawnSequence(int count, float interval, float fallDur)
     {
        
-        var empties = board.EmptyCells()
-                           .OrderBy(c => board.WorldCenter(c).y) // <- 아래부터
+        var empties = _board.EmptyCells()
+                           .OrderBy(c => _board.WorldCenter(c).y) // <- 아래부터
                            .Take(count)
                            .ToList();
         foreach (var cell in empties)
@@ -48,25 +47,27 @@ public class TopFiller : MonoBehaviour
     // 특정 셀 채우기(위치 애니메이션 포함)
     public IEnumerator SpawnInto(Vector3Int cell, float fallDur)
     {
-        if (!board.IsEmpty(cell)) yield break;
-        int type = Random.Range(0, Mathf.Min(colorCount, typeSprites.Length));
-        var go = Instantiate(piecePrefab);
-        var pz = go.GetComponent<Puzzle>();
-        pz.SetType(type, typeSprites[type]);
+        if (!_board.IsEmpty(cell))
+            yield break;
 
-        Vector3 target = board.WorldCenter(cell);
+        int type = Random.Range(0, Mathf.Min(colorCount, _typeSprites.Length));
+        var go = Instantiate(_piecePrefab);
+        var pz = go.GetComponent<Puzzle>();
+        pz.SetType(type, _typeSprites[type]);
+
+        Vector3 target = _board.WorldCenter(cell);
 
         // 모든 조각을 (3,0) 셀 위쪽에서 스폰
         Vector3Int spawnCell = new Vector3Int(3, 0, 0);
-        Vector3 spawnBase = board.WorldCenter(spawnCell);
+        Vector3 spawnBase = _board.WorldCenter(spawnCell);
         Vector3 from = spawnBase + Vector3.up * spawnHeightOffset;
 
         go.transform.position = from;
 
         // 등록
-        board.pieces[cell] = go;
+        _board.pieces[cell] = go;
 
-        if (useFlowingAnimation)
+        if (_IsuseFlowingAnimation)
         {
             // 흘러내리는 연출
             yield return StartCoroutine(FlowToTarget(go.transform, from, target));
@@ -88,7 +89,7 @@ public class TopFiller : MonoBehaviour
             Vector3 from = waypoints[i - 1];
             Vector3 to = waypoints[i];
 
-            yield return StartCoroutine(DirectMove(transform, from, to, flowStepDuration));
+            yield return StartCoroutine(DirectMove(transform, from, to, _flowStepDuration));
         }
     }
 
@@ -102,7 +103,7 @@ public class TopFiller : MonoBehaviour
 
         // 스폰 지점에서 목표까지의 가상 경로를 헥사곤 그리드 방향으로 계산
         Vector3Int spawnCell = new Vector3Int(3, 0, 0);
-        Vector3Int targetCell = board.tilemap.WorldToCell(target);
+        Vector3Int targetCell = _board.tilemap.WorldToCell(target);
 
         Vector3 current = start;
 

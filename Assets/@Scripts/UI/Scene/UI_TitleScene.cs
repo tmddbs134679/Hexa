@@ -19,8 +19,7 @@ public class UI_TitleScene : UI_Scene
 
     enum Texts
     {
- 
-
+        StartText
     }
     #endregion
 
@@ -50,9 +49,12 @@ public class UI_TitleScene : UI_Scene
     private void Start()
     {
         Managers.Game.Init();
-  
+        StartButtonAnimation();
     }
 
- 
+    void StartButtonAnimation()
+    {
+        GetText((int)Texts.StartText).DOFade(0, 1f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutCubic).Play();
+    }
 
 }

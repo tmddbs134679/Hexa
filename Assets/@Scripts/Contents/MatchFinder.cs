@@ -4,7 +4,7 @@ using System.Linq;
 
 public class MatchFinder : MonoBehaviour
 {
-    public BoardState board;
+    [SerializeField] private BoardState _board;
 
     // ---------------------------
     // Public API
@@ -13,7 +13,7 @@ public class MatchFinder : MonoBehaviour
     /// 보드 전체에서 라인(>=3) + 군집(>=4) 매치 수집
     public HashSet<Vector3Int> CollectAllMatches()
     {
-        var keys = board.pieces.Keys.ToList();
+        var keys = _board.pieces.Keys.ToList();
 
         var all = new HashSet<Vector3Int>();
 
@@ -38,7 +38,7 @@ public class MatchFinder : MonoBehaviour
 
         foreach (var s in keys)
         {
-            if (!board.pieces.TryGetValue(s, out var go)) continue;
+            if (!_board.pieces.TryGetValue(s, out var go)) continue;
             var pz = go.GetComponent<Puzzle>();
             if (pz == null || !pz.IsMatchable) continue;
 
@@ -82,7 +82,7 @@ public class MatchFinder : MonoBehaviour
         foreach (var s in keys)
         {
             if (visited.Contains(s)) continue;
-            if (!board.pieces.TryGetValue(s, out var go)) continue;
+            if (!_board.pieces.TryGetValue(s, out var go)) continue;
 
             var pz = go.GetComponent<Puzzle>();
             if (pz == null || !pz.IsMatchable) continue;
@@ -161,7 +161,7 @@ public class MatchFinder : MonoBehaviour
     // === Helper: "매치 가능한 퍼즐"만 같은 타입으로 인정 ===
     bool IsSameTypeForMatch(Vector3Int c, int type)
     {
-        if (!board.pieces.TryGetValue(c, out var go)) return false;
+        if (!_board.pieces.TryGetValue(c, out var go)) return false;
         var pz = go.GetComponent<Puzzle>();
         return pz != null && pz.IsMatchable && pz.typeId == type;
     }
