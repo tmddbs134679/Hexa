@@ -17,6 +17,7 @@ public class UI_ClearPopup : UI_Popup
     }
     enum Texts
     {
+        ScoreText,
         ClearText
     }
 
@@ -57,6 +58,7 @@ public class UI_ClearPopup : UI_Popup
 
     private void OnEnable()
     {
+        GetText((int)Texts.ScoreText).text = Managers.Game.Score.ToString();
         PopupOpenAnimation(GetObject((int)GameObjects.ContentObject));
     }
 }

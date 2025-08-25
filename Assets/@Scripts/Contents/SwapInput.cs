@@ -47,7 +47,7 @@ public class SwapInput : MonoBehaviour
         isDragging = true;
 
         // 드래그 시작 연출 (선택 표시 등)
-        Debug.Log($"드래그 시작: {dragStartCell}");
+        //Debug.Log($"드래그 시작: {dragStartCell}");
     }
 
     void UpdateDrag()
