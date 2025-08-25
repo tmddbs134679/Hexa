@@ -17,6 +17,11 @@ public class TopFiller : MonoBehaviour
     public Sprite[] typeSprites;        // 색 스프라이트(0~N-1)
     public int colorCount = 6;          // 사용 색 개수(장애물/특수 제외)
 
+
+    [Header("Top (Obstacle)")]
+    public GameObject topPrefab;   // ★ 팽이 프리팹 슬롯
+    public Sprite topSprite;       // (선택) 전용 스프라이트가 있으면 연결
+
     [Header("Spawn Position")]
     public float spawnHeightOffset = 2.0f; // (3,0) 위쪽으로 얼마나 올릴지
 

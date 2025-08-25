@@ -24,6 +24,10 @@ public class GravityWithSlide : MonoBehaviour
     // 좌/우 동률일 때 번갈아 선택하기 위한 상태
     private int slideParity = 0;
 
+    [Header("Initial Tops")]
+    public int initialTopCount = 5; // ★ 기본 5개
+
+
     // ─────────────────────────────────────────────────────────────
     // 칸 길이 기반 duration 계산 (입구 연출 속도 통일용)
     // ─────────────────────────────────────────────────────────────
@@ -98,12 +102,20 @@ public class GravityWithSlide : MonoBehaviour
     // ====== 초기 채우기 & 스폰 흐름 ======
 
     // 처음 채우기: (3,0) 입구로 넣고 → Collapse로 "한 칸씩" 흘러내리기
-    public IEnumerator FillInitialBoard(int totalPieces)
+    public IEnumerator FillInitialBoard(int totalPieces, int topCountOverride = -1)
     {
+        int want = (topCountOverride >= 0) ? topCountOverride : initialTopCount;
+        want = Mathf.Clamp(want, 0, totalPieces);
+
+        // 스폰 순서(0..totalPieces-1) 중 팽이를 넣을 인덱스 뽑기
+        var topIdx = new HashSet<int>();
+        while (topIdx.Count < want) topIdx.Add(Random.Range(0, totalPieces));
+
         for (int i = 0; i < totalPieces; i++)
         {
-            yield return SpawnFromTopEntry();   // 입구 셀에 등록
-            yield return CollapseAnimated();    // 한 칸씩 내려감(여러 번 라운드)
+            bool spawnTop = topIdx.Contains(i);
+            yield return SpawnFromTopEntry(spawnTop); // ★ 아래 함수 변경
+            yield return CollapseAnimated();
         }
     }
 
@@ -122,27 +134,41 @@ public class GravityWithSlide : MonoBehaviour
     }
 
     // (핵심) (3,0) 위에서 등장 → (3,0) 열의 최상단 빈칸(입구)에 '등록' → 입구까지 짧게 이동
-    private IEnumerator SpawnFromTopEntry()
+    IEnumerator SpawnFromTopEntry(bool spawnTop = false)
     {
         Vector3Int baseCell = new Vector3Int(3, 0, 0);
         Vector3Int entry = FindTopEntryAbove(baseCell);
 
-        // 입구가 이미 찼다면 스킵
         if (!board.IsValidCell(entry) || !board.IsEmpty(entry)) yield break;
 
-        int type = Random.Range(0, Mathf.Min(filler.colorCount, filler.typeSprites.Length));
-        var go = Instantiate(filler.piecePrefab);
-        var pz = go.GetComponent<Puzzle>();
-        pz.SetType(type, filler.typeSprites[type]);
+        GameObject go;
 
-        // 화면 위에서 등장
+        if (spawnTop && filler.topPrefab != null)
+        {
+            // ★ 팽이 생성
+            go = Instantiate(filler.topPrefab);
+            var top = go.GetComponent<SpinningTop>();
+            if (top != null && filler.topSprite != null)
+            {
+                if (top.sr == null) top.sr = go.GetComponent<SpriteRenderer>();
+                top.sr.sprite = filler.topSprite;
+            }
+        }
+        else
+        {
+            // 일반 퍼즐 생성
+            int type = Random.Range(0, Mathf.Min(filler.colorCount, filler.typeSprites.Length));
+            go = Instantiate(filler.piecePrefab);
+            var pz = go.GetComponent<Puzzle>();
+            pz.SetType(type, filler.typeSprites[type]);
+        }
+
+        // 화면 위에서 등장 → 입구셀 등록
         Vector3 from = board.WorldCenter(baseCell) + Vector3.up * filler.spawnHeightOffset;
         go.transform.position = from;
 
-        // ✅ 입구 셀에 등록 (중요: 등록해야 이후 Collapse가 이 조각을 인식함)
         board.pieces[entry] = go;
 
-        // 입구까지 이동(연출) — ★같은 속도로 보이게 자동 계산 적용
         Vector3 entryPos = board.WorldCenter(entry);
         float dur = unifyEntrySpeedWithPerCell ? DurationByPerCell(from, entryPos) : entryMoveDuration;
         yield return MoveTo(go.transform, entryPos, dur);
