@@ -87,7 +87,6 @@ public class UI_GameScene : UI_Scene
     private void Refresh()
     {
         GetText((int)Texts.ObstacleText).text = Managers.Game.TopGoal.ToString();
-        //GetText((int)Texts.MoveCountText).text = Managers.Game.MovesLeft.ToString();
     }
 
     void HandleMovesChanged(int left)

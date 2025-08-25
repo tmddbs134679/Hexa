@@ -22,6 +22,9 @@ public class SwapInput : MonoBehaviour
 
     void HandleDragInput()
     {
+        if (!Managers.Game._isDragActive)
+            return;  
+
         if (Input.GetMouseButtonDown(0))
         {
             StartDrag();
@@ -176,7 +179,13 @@ public class SwapInput : MonoBehaviour
 
         // 해소 루프
         Managers.Game.ConsumeMove();
+
+        Managers.Game.StartPuzzleMovement();
+
         yield return loop.ResolveAllMatchesThenIdle();
+
+        Managers.Game.EndPuzzleMovement();
+
     }
 
     IEnumerator MoveSwap(Transform A, Vector3 toA, Transform B, Vector3 toB, float dur)

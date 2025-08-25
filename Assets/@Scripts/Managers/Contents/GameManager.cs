@@ -31,6 +31,8 @@ public class GameManager : MonoBehaviour
 
     Vector3? _taggedPopupWorld; // 다음 점수 팝업을 띄울 위치(스왑 성공 시 태그)
 
+    public bool _isDragActive { get; private set; }
+
     #region Option
     public bool BGMOn
     {
@@ -67,7 +69,7 @@ public class GameManager : MonoBehaviour
 
     public void Init()
     {
-
+        EndPuzzleMovement();
     }
 
     // ===== 레벨 시작/업데이트 API =====
@@ -122,5 +124,14 @@ public class GameManager : MonoBehaviour
     {
         OnScorePopup?.Invoke(amount, worldPos);
     }
+    public void StartPuzzleMovement()
+    {
+        _isDragActive = false;
+    }
 
+    // 퍼즐 이동 끝났을 때 호출
+    public void EndPuzzleMovement()
+    {
+        _isDragActive = true;
+    }
 }

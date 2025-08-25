@@ -31,8 +31,11 @@ public partial class  MatchGameLoop : MonoBehaviour
     
     IEnumerator GameStartRoutine()
     {
+        Managers.Game.StartPuzzleMovement();
         // 시작하자마자 30칸 전부 꽉 채운 상태로 세팅
         yield return StartCoroutine(gravity.FillInitialBoard(30, 5));
+
+        Managers.Game.EndPuzzleMovement();
 
         //  추가: 이번 레벨 목표/이동수 초기화(예: 이동 15, 팽이 5개)
         Managers.Game.BeginLevel(startMoves: 15, topGoal: 5);
@@ -268,7 +271,7 @@ public partial class MatchGameLoop : MonoBehaviour
     // === 외부에서 호출: "매치 조각 파괴 직후, 중력/보충 직전" ===
     public IEnumerator Tops_PostDestroyAndBeforeGravity(HashSet<Vector3Int> cleared)
     {
-        Debug.Log($"[TOPS] ENTER cleared={cleared?.Count ?? -1}");   // ★ 진입 로그
+        Debug.Log($"[TOPS] ENTER cleared={cleared?.Count ?? -1}");   //  진입 로그
 
         Tops_RoundReset();
         Tops_ApplyStacks(cleared);
