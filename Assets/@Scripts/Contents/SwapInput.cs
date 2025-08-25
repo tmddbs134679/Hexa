@@ -23,7 +23,7 @@ public class SwapInput : MonoBehaviour
     void HandleDragInput()
     {
         if (!Managers.Game._isDragActive)
-            return;  
+            return;
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -41,6 +41,7 @@ public class SwapInput : MonoBehaviour
 
     void StartDrag()
     {
+        
         var cell = PickCell(Input.mousePosition);
         if (cell == null || !board.pieces.ContainsKey(cell.Value)) return;
 
@@ -156,6 +157,9 @@ public class SwapInput : MonoBehaviour
 
     IEnumerator TrySwapAndResolve(Vector3Int a, Vector3Int b)
     {
+        if (!Managers.Game._isDragActive)
+            yield break;  // 드래그 비활성화 중이면 종료
+
         // 연출: 위치 교환
         var A = board.pieces[a];
         var B = board.pieces[b];
@@ -180,12 +184,12 @@ public class SwapInput : MonoBehaviour
         // 해소 루프
         Managers.Game.ConsumeMove();
 
+
         Managers.Game.StartPuzzleMovement();
 
         yield return loop.ResolveAllMatchesThenIdle();
 
         Managers.Game.EndPuzzleMovement();
-
     }
 
     IEnumerator MoveSwap(Transform A, Vector3 toA, Transform B, Vector3 toB, float dur)
@@ -193,6 +197,8 @@ public class SwapInput : MonoBehaviour
         float e = 0f;
         var a0 = A.position;
         var b0 = B.position;
+
+        Managers.Game.StartPuzzleMovement();
 
         while (e < dur)
         {
@@ -205,5 +211,8 @@ public class SwapInput : MonoBehaviour
 
         A.position = toA;
         B.position = toB;
+
+        Managers.Game.EndPuzzleMovement();
+
     }
 }

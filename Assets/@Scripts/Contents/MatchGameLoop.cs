@@ -40,12 +40,16 @@ public partial class  MatchGameLoop : MonoBehaviour
         //  추가: 이번 레벨 목표/이동수 초기화(예: 이동 15, 팽이 5개)
         Managers.Game.BeginLevel(startMoves: 15, topGoal: 5);
 
+        Managers.Game.StartPuzzleMovement();
         yield return ResolveAllMatchesThenIdle();
+        Managers.Game.EndPuzzleMovement();
+
         yield break;
     }
     
     public IEnumerator ResolveAllMatchesThenIdle()
     {
+
         while (true)
         {
             var matched = matcher.CollectAllMatches();
@@ -61,6 +65,9 @@ public partial class  MatchGameLoop : MonoBehaviour
             int toSpawn = board.EmptyCells().Count();
             yield return StartCoroutine(gravity.ApplyWithSpawn(toSpawn));
         }
+
+  
+
     }
     
     IEnumerator DestroyMatchedPiecesWithAnimation(HashSet<Vector3Int> matchedCells)
@@ -241,14 +248,14 @@ public partial class MatchGameLoop : MonoBehaviour
 
         if (dead.Count > 0)
         {
-            // ★ 1) 팽이 위치마다 +500 팝업
+            //  1) 팽이 위치마다 +500 팝업
             foreach (var cell in dead)
             {
                 Vector3 pos = board.WorldCenter(cell);
                 Managers.Game.ShowScorePopup(Define.POINT_SCORE_TOP, pos);
             }
 
-            // ★ 2) 점수 총합 추가
+            //  2) 점수 총합 추가
             Managers.Game.AddScore(Define.POINT_SCORE_TOP * dead.Count);
         }
 
